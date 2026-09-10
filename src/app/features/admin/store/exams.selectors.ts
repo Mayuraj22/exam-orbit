@@ -1,9 +1,10 @@
 import { createSelector } from '@ngrx/store';
 import { adminExamsFeature } from './exams.reducer';
-import { examsAdapter, questionsAdapter } from './exams.state';
+import { examsAdapter, questionsAdapter, resultsAdapter } from './exams.state';
 
 const { selectAll: selectAllExams, selectEntities: selectExamEntities } = examsAdapter.getSelectors();
 const { selectAll: selectAllQuestions, selectEntities: selectQuestionEntities } = questionsAdapter.getSelectors();
+const { selectAll: selectAllResults, selectEntities: selectResultEntities } = resultsAdapter.getSelectors();
 
 export const selectExams = createSelector(adminExamsFeature.selectExams, selectAllExams);
 export const selectExamDictionary = createSelector(adminExamsFeature.selectExams, selectExamEntities);
@@ -14,6 +15,11 @@ export const selectQuestions = createSelector(adminExamsFeature.selectQuestions,
 export const selectQuestionDictionary = createSelector(adminExamsFeature.selectQuestions, selectQuestionEntities);
 export const selectQuestionsLoading = createSelector(adminExamsFeature.selectQuestions, (state) => state.loading);
 export const selectQuestionsError = createSelector(adminExamsFeature.selectQuestions, (state) => state.error);
+
+export const selectResults = createSelector(adminExamsFeature.selectResults, selectAllResults);
+export const selectResultDictionary = createSelector(adminExamsFeature.selectResults, selectResultEntities);
+export const selectResultsLoading = createSelector(adminExamsFeature.selectResults, (state) => state.loading);
+export const selectResultsError = createSelector(adminExamsFeature.selectResults, (state) => state.error);
 
 export const selectSelectedExam = createSelector(
   adminExamsFeature.selectSelectedExamId,

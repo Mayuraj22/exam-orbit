@@ -4,6 +4,7 @@ import {
   initialAdminExamsState,
   examsAdapter,
   questionsAdapter,
+  resultsAdapter,
 } from './exams.state';
 
 const adminExamsReducer = createReducer(
@@ -119,6 +120,30 @@ const adminExamsReducer = createReducer(
   on(AdminExamsActions.deleteQuestionFailure, (state, { error }) => ({
     ...state,
     questions: { ...state.questions, loading: false, error },
+  })),
+  on(AdminExamsActions.loadResultsForExam, (state) => ({
+    ...state,
+    results: { ...state.results, loading: true, error: null },
+  })),
+  on(AdminExamsActions.loadResultsForExamSuccess, (state, { results }) => ({
+    ...state,
+    results: resultsAdapter.setAll(results, { ...state.results, loading: false, error: null }),
+  })),
+  on(AdminExamsActions.loadResultsForExamFailure, (state, { error }) => ({
+    ...state,
+    results: { ...state.results, loading: false, error },
+  })),
+  on(AdminExamsActions.submitGrading, (state) => ({
+    ...state,
+    results: { ...state.results, loading: true, error: null },
+  })),
+  on(AdminExamsActions.submitGradingSuccess, (state, { result }) => ({
+    ...state,
+    results: resultsAdapter.updateOne({ id: result.id, changes: result }, { ...state.results, loading: false, error: null }),
+  })),
+  on(AdminExamsActions.submitGradingFailure, (state, { error }) => ({
+    ...state,
+    results: { ...state.results, loading: false, error },
   }))
 );
 

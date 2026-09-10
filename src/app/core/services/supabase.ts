@@ -141,4 +141,15 @@ export class SupabaseService {
       return data as Result;
     }));
   }
+
+  updateResultGrading(resultId: string, gradedAnswers: Record<string, boolean>, newScore: number, isFullyGraded: boolean): Observable<Result> {
+    return from(this.supabase.from('results').update({
+      graded_answers: gradedAnswers,
+      score: newScore,
+      is_fully_graded: isFullyGraded
+    }).eq('id', resultId).select().single().then(({ data, error }) => {
+      if (error) throw error;
+      return data as Result;
+    }));
+  }
 }

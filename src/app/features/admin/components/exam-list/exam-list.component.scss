@@ -1,0 +1,181 @@
+.exam-list {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30px;
+
+  h1 {
+    margin: 0;
+    color: #333;
+  }
+}
+
+.new-exam-form {
+  margin-bottom: 30px;
+  padding: 20px;
+
+  h2 {
+    margin-top: 0;
+    margin-bottom: 20px;
+    color: #333;
+  }
+
+  .form-group {
+    margin-bottom: 15px;
+
+    label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: 500;
+      color: #555;
+    }
+
+    .form-control {
+      width: 100%;
+      padding: 8px 12px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 14px;
+
+      &:focus {
+        outline: none;
+        border-color: #007bff;
+      }
+    }
+
+    textarea.form-control {
+      resize: vertical;
+    }
+  }
+
+  .form-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+  }
+}
+
+.loading,
+.error,
+.empty-state {
+  text-align: center;
+  padding: 40px;
+  color: #666;
+}
+
+.error {
+  color: #dc3545;
+  background-color: #f8d7da;
+  border: 1px solid #f5c6cb;
+  border-radius: 4px;
+}
+
+.exams-container {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.exam-card {
+  padding: 20px;
+
+  .exam-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+
+    h3 {
+      margin: 0;
+      color: #333;
+    }
+
+    .status-badge {
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 500;
+      text-transform: uppercase;
+
+      &.published {
+        background-color: #d4edda;
+        color: #155724;
+      }
+
+      &.draft {
+        background-color: #fff3cd;
+        color: #856404;
+      }
+    }
+  }
+
+  .exam-details {
+    margin-bottom: 15px;
+
+    .description {
+      color: #666;
+      margin: 0 0 10px 0;
+      line-height: 1.5;
+    }
+
+    .meta {
+      display: flex;
+      gap: 20px;
+      color: #888;
+      font-size: 14px;
+    }
+  }
+
+  .exam-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+}
+
+.card {
+  background-color: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: background-color 0.2s;
+
+  &:hover {
+    opacity: 0.9;
+  }
+
+  &.btn-primary {
+    background-color: #007bff;
+    color: white;
+  }
+
+  &.btn-secondary {
+    background-color: #6c757d;
+    color: white;
+  }
+
+  &.btn-success {
+    background-color: #28a745;
+    color: white;
+  }
+
+  &.btn-danger {
+    background-color: #dc3545;
+    color: white;
+  }
+}

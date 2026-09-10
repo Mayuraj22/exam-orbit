@@ -140,6 +140,36 @@ export const deleteQuestion$ = createEffect(() => {
   );
 }, { functional: true });
 
+export const loadResultsForExam$ = createEffect(() => {
+  const actions$ = inject(Actions);
+  const supabaseService = inject(SupabaseService);
+
+  return actions$.pipe(
+    ofType(AdminExamsActions.loadResultsForExam),
+    switchMap(({ examId }) =>
+      supabaseService.getResultsByExamId(examId).pipe(
+        map((results) => AdminExamsActions.loadResultsForExamSuccess({ results })),
+        catchError((error) => of(AdminExamsActions.loadResultsForExamFailure({ error: error.message })))
+      )
+    )
+  );
+}, { functional: true });
+
+export const submitGrading$ = createEffect(() => {
+  const actions$ = inject(Actions);
+  const supabaseService = inject(SupabaseService);
+
+  return actions$.pipe(
+    ofType(AdminExamsActions.submitGrading),
+    switchMap(({ resultId, gradedAnswers, newScore, isFullyGraded }) =>
+      supabaseService.updateResultGrading(resultId, gradedAnswers, newScore, isFullyGraded).pipe(
+        map((result) => AdminExamsActions.submitGradingSuccess({ result })),
+        catchError((error) => of(AdminExamsActions.submitGradingFailure({ error: error.message })))
+      )
+    )
+  );
+}, { functional: true });
+
 export const adminExamsEffects = {
   loadExams$,
   createExam$,
@@ -150,4 +180,6 @@ export const adminExamsEffects = {
   createQuestion$,
   updateQuestion$,
   deleteQuestion$,
+  loadResultsForExam$,
+  submitGrading$,
 };

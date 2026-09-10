@@ -1,0 +1,99 @@
+<div class="exam-list">
+  <div class="header">
+    <h1>Exam Management</h1>
+    <button class="btn btn-primary" (click)="toggleNewExamForm()">+ New Exam</button>
+  </div>
+
+  <!-- New Exam Form -->
+  <div *ngIf="showNewExamForm" class="new-exam-form card">
+    <h2>Create New Exam</h2>
+    <div class="form-group">
+      <label for="title">Title *</label>
+      <input
+        id="title"
+        type="text"
+        [(ngModel)]="newExamForm.title"
+        placeholder="Enter exam title"
+        class="form-control"
+      />
+    </div>
+    <div class="form-group">
+      <label for="description">Description</label>
+      <textarea
+        id="description"
+        [(ngModel)]="newExamForm.description"
+        placeholder="Enter exam description"
+        class="form-control"
+        rows="3"
+      ></textarea>
+    </div>
+    <div class="form-group">
+      <label for="duration">Duration (minutes)</label>
+      <input
+        id="duration"
+        type="number"
+        [(ngModel)]="newExamForm.duration_minutes"
+        class="form-control"
+        min="1"
+      />
+    </div>
+    <div class="form-actions">
+      <button class="btn btn-primary" (click)="createExam()">Create Exam</button>
+      <button class="btn btn-secondary" (click)="cancelNewExam()">Cancel</button>
+    </div>
+  </div>
+
+  <!-- Loading State -->
+  <div *ngIf="loading$ | async" class="loading">
+    <p>Loading exams...</p>
+  </div>
+
+  <!-- Error State -->
+  <div *ngIf="error$ | async as error" class="error">
+    <p>Error loading exams: {{ error }}</p>
+  </div>
+
+  <!-- Exam List -->
+  <div *ngIf="(exams$ | async) as exams" class="exams-container">
+    <div *ngIf="exams.length === 0" class="empty-state">
+      <p>No exams yet. Create your first exam to get started.</p>
+    </div>
+
+    <div *ngFor="let exam of exams" class="exam-card card">
+      <div class="exam-header">
+        <h3>{{ exam.title }}</h3>
+        <span class="status-badge" [class.published]="exam.is_published" [class.draft]="!exam.is_published">
+          {{ exam.is_published ? 'Published' : 'Draft' }}
+        </span>
+      </div>
+
+      <div class="exam-details">
+        <p *ngIf="exam.description" class="description">{{ exam.description }}</p>
+        <div class="meta">
+          <span>Duration: {{ exam.duration_minutes }} minutes</span>
+          <span>Created: {{ exam.created_at | date:'medium' }}</span>
+        </div>
+      </div>
+
+      <div class="exam-actions">
+        <button class="btn btn-secondary" (click)="selectExam(exam.id)">
+          {{ (selectedExam$ | async)?.id === exam.id ? 'Close Questions' : 'Manage Questions' }}
+        </button>
+        <button
+          *ngIf="!exam.is_published"
+          class="btn btn-success"
+          (click)="publishExam(exam.id)"
+        >
+          Publish
+        </button>
+        <button class="btn btn-danger" (click)="deleteExam(exam.id)">Delete</button>
+      </div>
+
+      <!-- Question Form (Inline) -->
+      <app-question-form
+        *ngIf="(selectedExam$ | async)?.id === exam.id"
+        [examId]="exam.id"
+      ></app-question-form>
+    </div>
+  </div>
+</div>

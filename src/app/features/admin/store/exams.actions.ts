@@ -1,6 +1,7 @@
 import { createActionGroup, emptyProps, props } from '@ngrx/store';
 import { Exam } from '../../../shared/models/exam.model';
 import { Question } from '../../../shared/models/question.model';
+import { Result } from '../../../shared/models/result.model';
 
 export const AdminExamsActions = createActionGroup({
   source: 'Admin Exams',
@@ -42,5 +43,14 @@ export const AdminExamsActions = createActionGroup({
     'Delete Question': props<{ id: string }>(),
     'Delete Question Success': props<{ id: string }>(),
     'Delete Question Failure': props<{ error: string }>(),
+
+    'Load Results For Exam': props<{ examId: string }>(),
+    'Load Results For Exam Success': props<{ results: Result[] }>(),
+    'Load Results For Exam Failure': props<{ error: string }>(),
+
+    'Grade Answer': props<{ resultId: string; questionId: string; isCorrect: boolean }>(),
+    'Submit Grading': props<{ resultId: string; gradedAnswers: Record<string, boolean>; newScore: number; isFullyGraded: boolean }>(),
+    'Submit Grading Success': props<{ result: Result }>(),
+    'Submit Grading Failure': props<{ error: string }>(),
   },
 });

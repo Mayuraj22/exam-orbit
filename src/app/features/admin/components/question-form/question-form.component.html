@@ -1,0 +1,126 @@
+<div class="question-form">
+  <div class="questions-section">
+    <h3>Questions for this Exam</h3>
+
+    <!-- Loading State -->
+    <div *ngIf="loading$ | async" class="loading">
+      <p>Loading questions...</p>
+    </div>
+
+    <!-- Error State -->
+    <div *ngIf="error$ | async as error" class="error">
+      <p>Error loading questions: {{ error }}</p>
+    </div>
+
+    <!-- Questions List -->
+    <div *ngIf="(filteredQuestions$ | async) as questions" class="questions-list">
+      <div *ngIf="questions.length === 0" class="empty-state">
+        <p>No questions yet. Add your first question below.</p>
+      </div>
+
+      <div *ngFor="let question of questions" class="question-card card">
+        <div class="question-header">
+          <span class="question-number">Q{{ question.order_index + 1 }}</span>
+          <span class="type-badge" [class.mcq]="question.question_type === 'mcq'" [class.input]="question.question_type === 'input'">
+            {{ question.question_type === 'mcq' ? 'MCQ' : 'Input' }}
+          </span>
+        </div>
+        <p class="question-text">{{ question.question_text }}</p>
+        <div *ngIf="question.question_type === 'mcq' && question.options" class="options-list">
+          <div *ngFor="let option of question.options" class="option-item">
+            <span class="option-text">{{ option.text }}</span>
+          </div>
+        </div>
+        <div class="question-actions">
+          <button class="btn btn-danger btn-sm" (click)="deleteQuestion(question.id)">Delete</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- New Question Form -->
+  <div class="new-question-section card">
+    <h3>Add New Question</h3>
+
+    <div class="question-type-toggle">
+      <button
+        class="type-btn"
+        [class.active]="questionType === 'mcq'"
+        (click)="setQuestionType('mcq')"
+      >
+        Multiple Choice
+      </button>
+      <button
+        class="type-btn"
+        [class.active]="questionType === 'input'"
+        (click)="setQuestionType('input')"
+      >
+        Input
+      </button>
+    </div>
+
+    <form [formGroup]="questionForm" (ngSubmit)="submitQuestion()">
+      <div class="form-group">
+        <label for="question-text">Question Text *</label>
+        <textarea
+          id="question-text"
+          formControlName="question_text"
+          placeholder="Enter your question"
+          class="form-control"
+          rows="3"
+        ></textarea>
+      </div>
+
+      <!-- MCQ Options -->
+      <div *ngIf="questionType === 'mcq'" formArrayName="options" class="options-section">
+        <label>Options *</label>
+        <div *ngFor="let option of options.controls; let i = index" [formGroupName]="i" class="option-input-group">
+          <input
+            type="text"
+            formControlName="text"
+            placeholder="Option {{ i + 1 }}"
+            class="form-control option-input"
+          />
+          <button
+            type="button"
+            class="btn btn-danger btn-sm"
+            (click)="removeOption(i)"
+            [disabled]="options.length <= 2"
+          >
+            Remove
+          </button>
+        </div>
+        <button type="button" class="btn btn-secondary btn-sm" (click)="addOption()">+ Add Option</button>
+      </div>
+
+      <!-- Input Type Correct Answer -->
+      <div *ngIf="questionType === 'input'" class="form-group">
+        <label for="correct-answer">Correct Answer *</label>
+        <input
+          id="correct-answer"
+          type="text"
+          formControlName="correct_answer"
+          placeholder="Enter the correct answer"
+          class="form-control"
+        />
+      </div>
+
+      <!-- MCQ Correct Answer -->
+      <div *ngIf="questionType === 'mcq'" class="form-group">
+        <label for="correct-answer">Correct Answer Option *</label>
+        <input
+          id="correct-answer"
+          type="text"
+          formControlName="correct_answer"
+          placeholder="Enter the text of the correct option"
+          class="form-control"
+        />
+      </div>
+
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary" [disabled]="questionForm.invalid">Add Question</button>
+        <button type="button" class="btn btn-secondary" (click)="resetForm()">Reset</button>
+      </div>
+    </form>
+  </div>
+</div>
