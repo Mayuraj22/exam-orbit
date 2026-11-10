@@ -1,0 +1,188 @@
+<div class="results">
+  @if (!allExamsMode()) {
+    <div class="summary-cards">
+      <div class="stat">
+        <span class="stat-value">{{ summary().submitted }}</span>
+        <span class="stat-label">Submitted</span>
+      </div>
+      <div class="stat">
+        <span class="stat-value"
+          >{{ summary().average ?? '—' }}{{ summary().average !== null ? '%' : '' }}</span
+        >
+        <span class="stat-label">Average score</span>
+      </div>
+      <div class="stat">
+        <span class="stat-value"
+          >{{ summary().highest ?? '—' }}{{ summary().highest !== null ? '%' : '' }}</span
+        >
+        <span class="stat-label">Highest</span>
+      </div>
+      <div class="stat">
+        <span class="stat-value"
+          >{{ summary().lowest ?? '—' }}{{ summary().lowest !== null ? '%' : '' }}</span
+        >
+        <span class="stat-label">Lowest</span>
+      </div>
+      <div class="stat" [class.attention]="summary().needsGrading > 0">
+        <span class="stat-value">{{ summary().needsGrading }}</span>
+        <span class="stat-label">Needs grading</span>
+      </div>
+    </div>
+  }
+
+  <div class="filters">
+    <mat-form-field class="search-field" appearance="outline" subscriptSizing="dynamic">
+      <mat-icon matPrefix>search</mat-icon>
+      <mat-label>Search by candidate</mat-label>
+      <input matInput [value]="search()" (input)="search.set($any($event.target).value)" />
+    </mat-form-field>
+
+    @if (allExamsMode()) {
+      <mat-form-field class="exam-field" appearance="outline" subscriptSizing="dynamic">
+        <mat-label>Exam</mat-label>
+        <mat-select [value]="examFilter()" (selectionChange)="examFilter.set($event.value)">
+          <mat-option value="all">All exams</mat-option>
+          @for (exam of exams(); track exam.id) {
+            <mat-option [value]="exam.id">{{ exam.title }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+    }
+
+    <mat-button-toggle-group
+      [value]="statusFilter()"
+      (change)="statusFilter.set($event.value)"
+      aria-label="Filter by grading status"
+      hideSingleSelectionIndicator
+    >
+      <mat-button-toggle value="all">All</mat-button-toggle>
+      <mat-button-toggle value="needs-grading">Needs grading</mat-button-toggle>
+      <mat-button-toggle value="graded">Graded</mat-button-toggle>
+    </mat-button-toggle-group>
+
+    <span class="spacer"></span>
+    <button
+      mat-button
+      type="button"
+      [disabled]="!dataSource.filteredData.length"
+      (click)="exportCsv()"
+    >
+      <mat-icon>download</mat-icon>
+      Export CSV
+    </button>
+  </div>
+
+  @if (error(); as message) {
+    <div class="error-banner" role="alert">
+      <mat-icon>error_outline</mat-icon>
+      <span>{{ message }}</span>
+      <span class="spacer"></span>
+      <button mat-button type="button" (click)="reload()">Retry</button>
+    </div>
+  }
+
+  <div class="table-wrap">
+    @if (loading()) {
+      <mat-progress-bar mode="indeterminate" aria-label="Loading results" />
+    }
+
+    <table
+      mat-table
+      class="responsive-table"
+      [dataSource]="dataSource"
+      matSort
+      matSortActive="submitted"
+      matSortDirection="desc"
+      aria-label="Results"
+    >
+      <ng-container matColumnDef="candidate">
+        <th mat-header-cell *matHeaderCellDef mat-sort-header>Candidate</th>
+        <td mat-cell *matCellDef="let r" data-label="Candidate">
+          <div class="candidate">{{ r.candidateName }}</div>
+          @if (r.candidateUsername) {
+            <div class="username">{{ r.candidateUsername }}</div>
+          }
+        </td>
+      </ng-container>
+
+      <ng-container matColumnDef="exam">
+        <th mat-header-cell *matHeaderCellDef mat-sort-header>Exam</th>
+        <td mat-cell *matCellDef="let r" data-label="Exam">
+          <a
+            class="exam-link"
+            [routerLink]="['/admin/exams', r.exam_id]"
+            [queryParams]="{ tab: 'results' }"
+            >{{ r.examTitle }}</a
+          >
+        </td>
+      </ng-container>
+
+      <ng-container matColumnDef="score">
+        <th mat-header-cell *matHeaderCellDef mat-sort-header>Score</th>
+        <td mat-cell *matCellDef="let r" data-label="Score">
+          <span class="score"
+            >{{ r.score ?? '—' }}
+            @if (r.total !== null) {
+              / {{ r.total }}
+            }
+          </span>
+          @if (r.percent !== null) {
+            <span class="percent">{{ r.percent }}%</span>
+          }
+        </td>
+      </ng-container>
+
+      <ng-container matColumnDef="submitted">
+        <th mat-header-cell *matHeaderCellDef mat-sort-header>Submitted</th>
+        <td mat-cell *matCellDef="let r" data-label="Submitted">
+          {{ r.submitted_at | date: 'medium' }}
+        </td>
+      </ng-container>
+
+      <ng-container matColumnDef="status">
+        <th mat-header-cell *matHeaderCellDef mat-sort-header>Status</th>
+        <td mat-cell *matCellDef="let r" data-label="Status">
+          <span
+            class="status-chip"
+            [class.published]="r.status === 'graded'"
+            [class.draft]="r.status === 'needs-grading'"
+          >
+            {{ r.status === 'graded' ? 'Graded' : 'Needs grading' }}
+          </span>
+        </td>
+      </ng-container>
+
+      <ng-container matColumnDef="actions">
+        <th mat-header-cell *matHeaderCellDef><span class="cdk-visually-hidden">Actions</span></th>
+        <td mat-cell *matCellDef="let r" class="actions-cell">
+          <button mat-stroked-button type="button" (click)="openGrading(r)">
+            <mat-icon>{{ r.status === 'graded' ? 'visibility' : 'rate_review' }}</mat-icon>
+            {{ r.status === 'graded' ? 'Review' : 'Grade' }}
+          </button>
+        </td>
+      </ng-container>
+
+      <tr mat-header-row *matHeaderRowDef="displayedColumns()"></tr>
+      <tr mat-row *matRowDef="let row; columns: displayedColumns()"></tr>
+
+      <tr class="mat-mdc-row" *matNoDataRow>
+        <td class="mat-mdc-cell no-data" [attr.colspan]="displayedColumns().length">
+          @if (loading()) {
+            Loading results…
+          } @else if (search() || statusFilter() !== 'all' || examFilter() !== 'all') {
+            No results match these filters.
+          } @else {
+            No submissions yet. Results appear here once candidates finish the exam.
+          }
+        </td>
+      </tr>
+    </table>
+
+    <mat-paginator
+      [pageSizeOptions]="[10, 25, 50]"
+      [pageSize]="10"
+      showFirstLastButtons
+      aria-label="Results pages"
+    />
+  </div>
+</div>

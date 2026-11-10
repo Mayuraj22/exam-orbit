@@ -1,99 +1,230 @@
-<div class="exam-list">
-  <div class="header">
-    <h1>Exam Management</h1>
-    <button class="btn btn-primary" (click)="toggleNewExamForm()">+ New Exam</button>
-  </div>
+@if (saving()) {
+  <mat-progress-bar class="saving-bar" mode="indeterminate" aria-label="Saving" />
+}
 
-  <!-- New Exam Form -->
-  <div *ngIf="showNewExamForm" class="new-exam-form card">
-    <h2>Create New Exam</h2>
-    <div class="form-group">
-      <label for="title">Title *</label>
-      <input
-        id="title"
-        type="text"
-        [(ngModel)]="newExamForm.title"
-        placeholder="Enter exam title"
-        class="form-control"
-      />
+<div class="page">
+  <header class="page-header">
+    <div>
+      <h1>Exams</h1>
+      <p>Create exams, add questions and publish them to candidates.</p>
     </div>
-    <div class="form-group">
-      <label for="description">Description</label>
-      <textarea
-        id="description"
-        [(ngModel)]="newExamForm.description"
-        placeholder="Enter exam description"
-        class="form-control"
-        rows="3"
-      ></textarea>
-    </div>
-    <div class="form-group">
-      <label for="duration">Duration (minutes)</label>
-      <input
-        id="duration"
-        type="number"
-        [(ngModel)]="newExamForm.duration_minutes"
-        class="form-control"
-        min="1"
-      />
-    </div>
-    <div class="form-actions">
-      <button class="btn btn-primary" (click)="createExam()">Create Exam</button>
-      <button class="btn btn-secondary" (click)="cancelNewExam()">Cancel</button>
-    </div>
-  </div>
+    <button mat-flat-button type="button" (click)="createExam()">
+      <mat-icon>add</mat-icon>
+      New Exam
+    </button>
+  </header>
 
-  <!-- Loading State -->
-  <div *ngIf="loading$ | async" class="loading">
-    <p>Loading exams...</p>
-  </div>
-
-  <!-- Error State -->
-  <div *ngIf="error$ | async as error" class="error">
-    <p>Error loading exams: {{ error }}</p>
-  </div>
-
-  <!-- Exam List -->
-  <div *ngIf="(exams$ | async) as exams" class="exams-container">
-    <div *ngIf="exams.length === 0" class="empty-state">
-      <p>No exams yet. Create your first exam to get started.</p>
-    </div>
-
-    <div *ngFor="let exam of exams" class="exam-card card">
-      <div class="exam-header">
-        <h3>{{ exam.title }}</h3>
-        <span class="status-badge" [class.published]="exam.is_published" [class.draft]="!exam.is_published">
-          {{ exam.is_published ? 'Published' : 'Draft' }}
-        </span>
-      </div>
-
-      <div class="exam-details">
-        <p *ngIf="exam.description" class="description">{{ exam.description }}</p>
-        <div class="meta">
-          <span>Duration: {{ exam.duration_minutes }} minutes</span>
-          <span>Created: {{ exam.created_at | date:'medium' }}</span>
-        </div>
-      </div>
-
-      <div class="exam-actions">
-        <button class="btn btn-secondary" (click)="selectExam(exam.id)">
-          {{ (selectedExam$ | async)?.id === exam.id ? 'Close Questions' : 'Manage Questions' }}
-        </button>
+  <!-- Toolbar: search, status filter, sort -->
+  <div class="filters">
+    <mat-form-field class="search-field" subscriptSizing="dynamic" appearance="outline">
+      <mat-icon matPrefix>search</mat-icon>
+      <mat-label>Search exams</mat-label>
+      <input matInput [value]="search()" (input)="setQueryParam('q', $any($event.target).value)" />
+      @if (search()) {
         <button
-          *ngIf="!exam.is_published"
-          class="btn btn-success"
-          (click)="publishExam(exam.id)"
+          matSuffix
+          mat-icon-button
+          type="button"
+          aria-label="Clear search"
+          (click)="setQueryParam('q', null)"
         >
-          Publish
+          <mat-icon>close</mat-icon>
         </button>
-        <button class="btn btn-danger" (click)="deleteExam(exam.id)">Delete</button>
-      </div>
+      }
+    </mat-form-field>
 
-      <!-- Question Form (Inline) -->
-      <app-question-form
-        *ngIf="(selectedExam$ | async)?.id === exam.id"
-        [examId]="exam.id"
-      ></app-question-form>
-    </div>
+    <mat-button-toggle-group
+      [value]="statusFilter()"
+      (change)="setQueryParam('status', $event.value)"
+      aria-label="Filter by status"
+      hideSingleSelectionIndicator
+    >
+      <mat-button-toggle value="all">All ({{ counts().all }})</mat-button-toggle>
+      <mat-button-toggle value="published">Published ({{ counts().published }})</mat-button-toggle>
+      <mat-button-toggle value="draft">Draft ({{ counts().draft }})</mat-button-toggle>
+    </mat-button-toggle-group>
+
+    <mat-form-field class="sort-field" subscriptSizing="dynamic" appearance="outline">
+      <mat-label>Sort by</mat-label>
+      <mat-select [value]="sortBy()" (selectionChange)="setQueryParam('sort', $event.value)">
+        <mat-option value="newest">Newest first</mat-option>
+        <mat-option value="oldest">Oldest first</mat-option>
+        <mat-option value="title">Title (A–Z)</mat-option>
+      </mat-select>
+    </mat-form-field>
   </div>
+
+  @if (error(); as message) {
+    <div class="error-banner" role="alert">
+      <mat-icon>error_outline</mat-icon>
+      <span>{{ message }}</span>
+      <span class="spacer"></span>
+      <button mat-button type="button" (click)="loadExams()">Retry</button>
+    </div>
+  }
+
+  @if (loading() && exams().length === 0) {
+    <div class="exams-container" aria-busy="true" aria-label="Loading exams">
+      @for (s of skeletons; track s) {
+        <mat-card appearance="outlined" class="exam-card">
+          <mat-card-content>
+            <div class="skeleton sk-title"></div>
+            <div class="skeleton sk-line"></div>
+            <div class="skeleton sk-line short"></div>
+            <div class="sk-actions">
+              <div class="skeleton sk-btn"></div>
+              <div class="skeleton sk-btn"></div>
+            </div>
+          </mat-card-content>
+        </mat-card>
+      }
+    </div>
+  } @else {
+    <p class="result-count" aria-live="polite">
+      @if (hasFilters()) {
+        Showing {{ visibleExams().length }} of {{ exams().length }} exams
+        <button mat-button type="button" (click)="clearFilters()">Clear filters</button>
+      }
+    </p>
+
+    <div class="exams-container">
+      @for (exam of visibleExams(); track exam.id) {
+        <mat-card
+          appearance="outlined"
+          class="exam-card"
+          [class.expanded]="selectedExamId() === exam.id"
+        >
+          <mat-card-content>
+            <div class="exam-header">
+              <h2 class="exam-title">
+                <a [routerLink]="['/admin/exams', exam.id]">{{ exam.title }}</a>
+              </h2>
+              <span
+                class="status-chip"
+                [class.published]="exam.is_published"
+                [class.draft]="!exam.is_published"
+              >
+                {{ exam.is_published ? 'Published' : 'Draft' }}
+              </span>
+              <button
+                mat-icon-button
+                type="button"
+                [matMenuTriggerFor]="examMenu"
+                [matMenuTriggerData]="{ exam }"
+                [attr.aria-label]="'More actions for ' + exam.title"
+              >
+                <mat-icon>more_vert</mat-icon>
+              </button>
+            </div>
+
+            @if (exam.description) {
+              <p class="description">{{ exam.description }}</p>
+            }
+
+            <div class="meta">
+              <span><mat-icon inline>schedule</mat-icon> {{ exam.duration_minutes }} min</span>
+              <span
+                ><mat-icon inline>event</mat-icon> {{ exam.created_at | date: 'mediumDate' }}</span
+              >
+            </div>
+          </mat-card-content>
+
+          <mat-card-actions class="exam-actions">
+            <button
+              mat-stroked-button
+              type="button"
+              (click)="toggleQuestions(exam.id)"
+              [attr.aria-expanded]="selectedExamId() === exam.id"
+            >
+              <mat-icon>{{ selectedExamId() === exam.id ? 'expand_less' : 'quiz' }}</mat-icon>
+              {{ selectedExamId() === exam.id ? 'Close Questions' : 'Manage Questions' }}
+            </button>
+            <a mat-button [routerLink]="['/admin/exams', exam.id]">
+              <mat-icon>open_in_new</mat-icon>
+              Open
+            </a>
+            @if (!exam.is_published) {
+              <button
+                mat-button
+                type="button"
+                [disabled]="saving()"
+                (click)="examActions.publish(exam)"
+              >
+                <mat-icon>publish</mat-icon>
+                Publish
+              </button>
+            }
+          </mat-card-actions>
+
+          @if (selectedExamId() === exam.id) {
+            <app-question-form [examId]="exam.id" />
+          }
+        </mat-card>
+      } @empty {
+        @if (hasFilters()) {
+          <div class="empty-state">
+            <mat-icon>search_off</mat-icon>
+            <h3>No exams match your filters</h3>
+            <p>Try a different search term or status.</p>
+            <button mat-stroked-button type="button" (click)="clearFilters()">Clear filters</button>
+          </div>
+        } @else if (!error()) {
+          <div class="empty-state">
+            <mat-icon>assignment</mat-icon>
+            <h3>No exams yet</h3>
+            <p>Create your first exam to get started.</p>
+            <button mat-flat-button type="button" (click)="createExam()">
+              <mat-icon>add</mat-icon>
+              New Exam
+            </button>
+          </div>
+        }
+      }
+    </div>
+  }
 </div>
+
+<!-- One menu instance shared by every card; the card passes its exam via matMenuTriggerData. -->
+<mat-menu #examMenu="matMenu" xPosition="before">
+  <ng-template matMenuContent let-exam="exam">
+    <a mat-menu-item [routerLink]="['/admin/exams', exam.id]">
+      <mat-icon>open_in_new</mat-icon>
+      <span>Open</span>
+    </a>
+    <button mat-menu-item type="button" (click)="examActions.openEditor(exam).subscribe()">
+      <mat-icon>edit</mat-icon>
+      <span>Edit details</span>
+    </button>
+    <button mat-menu-item type="button" [disabled]="saving()" (click)="examActions.duplicate(exam)">
+      <mat-icon>content_copy</mat-icon>
+      <span>Duplicate</span>
+    </button>
+    @if (exam.is_published) {
+      <button
+        mat-menu-item
+        type="button"
+        [disabled]="saving()"
+        (click)="examActions.unpublish(exam)"
+      >
+        <mat-icon>unpublished</mat-icon>
+        <span>Unpublish</span>
+      </button>
+    } @else {
+      <button mat-menu-item type="button" [disabled]="saving()" (click)="examActions.publish(exam)">
+        <mat-icon>publish</mat-icon>
+        <span>Publish</span>
+      </button>
+    }
+    <mat-divider />
+    <button
+      mat-menu-item
+      type="button"
+      class="danger"
+      [disabled]="saving()"
+      (click)="examActions.delete(exam)"
+    >
+      <mat-icon>delete_outline</mat-icon>
+      <span>Delete</span>
+    </button>
+  </ng-template>
+</mat-menu>

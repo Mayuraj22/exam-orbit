@@ -1,0 +1,82 @@
+<h2 mat-dialog-title>Import candidates from CSV</h2>
+
+<mat-dialog-content>
+  <p class="intro">
+    Use a CSV file whose first row is <code>name,username</code>. The username is optional and will
+    be generated from the name if empty. Every candidate gets a new passcode.
+  </p>
+
+  <div class="file-row">
+    <button mat-stroked-button type="button" (click)="fileInput.click()">
+      <mat-icon>upload_file</mat-icon>
+      Choose CSV file
+    </button>
+    <input #fileInput type="file" accept=".csv,text/csv" hidden (change)="onFileSelected($event)" />
+    <span class="file-name">{{ fileName() ?? 'No file chosen' }}</span>
+    <span class="spacer"></span>
+    <button mat-button type="button" (click)="downloadTemplate()">
+      <mat-icon>download</mat-icon>
+      Template
+    </button>
+  </div>
+
+  @if (fileError(); as message) {
+    <div class="error-banner" role="alert">
+      <mat-icon>error_outline</mat-icon>
+      <span>{{ message }}</span>
+    </div>
+  }
+
+  @if (rows().length) {
+    <p class="summary" aria-live="polite">
+      <strong>{{ validRows().length }}</strong> ready to import
+      @if (invalidCount()) {
+        · <span class="bad">{{ invalidCount() }} with errors (skipped)</span>
+      }
+    </p>
+
+    <div class="preview">
+      <table>
+        <thead>
+          <tr>
+            <th>Line</th>
+            <th>Name</th>
+            <th>Username</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (row of rows(); track row.line) {
+            <tr [class.invalid]="row.error">
+              <td>{{ row.line }}</td>
+              <td>{{ row.name || '—' }}</td>
+              <td class="mono">{{ row.username || '—' }}</td>
+              <td>
+                @if (row.error) {
+                  <span class="bad"><mat-icon inline>error</mat-icon> {{ row.error }}</span>
+                } @else {
+                  <span class="ok"><mat-icon inline>check_circle</mat-icon> OK</span>
+                }
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button type="button" mat-dialog-close>Cancel</button>
+  <button
+    mat-flat-button
+    type="button"
+    [disabled]="!validRows().length || saving()"
+    (click)="import()"
+  >
+    @if (saving()) {
+      <mat-spinner diameter="18" />
+    }
+    Import {{ validRows().length || '' }} candidate{{ validRows().length === 1 ? '' : 's' }}
+  </button>
+</mat-dialog-actions>

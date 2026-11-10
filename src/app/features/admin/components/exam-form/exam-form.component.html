@@ -1,0 +1,50 @@
+<form [formGroup]="form" (ngSubmit)="submit()" class="exam-form">
+  <mat-form-field class="full-width">
+    <mat-label>Title</mat-label>
+    <input
+      matInput
+      formControlName="title"
+      placeholder="e.g. JavaScript Fundamentals"
+      required
+      cdkFocusInitial
+    />
+    @if (form.controls.title.hasError('required')) {
+      <mat-error>Title is required.</mat-error>
+    } @else if (form.controls.title.hasError('maxlength')) {
+      <mat-error>Title must be 200 characters or fewer.</mat-error>
+    }
+  </mat-form-field>
+
+  <mat-form-field class="full-width">
+    <mat-label>Description</mat-label>
+    <textarea
+      matInput
+      formControlName="description"
+      rows="3"
+      placeholder="What does this exam cover?"
+    ></textarea>
+  </mat-form-field>
+
+  <mat-form-field class="duration-field">
+    <mat-label>Duration</mat-label>
+    <input matInput type="number" formControlName="duration_minutes" min="1" max="600" required />
+    <span matTextSuffix>minutes</span>
+    @if (form.controls.duration_minutes.hasError('max')) {
+      <mat-error>Duration can be at most 600 minutes.</mat-error>
+    } @else if (form.controls.duration_minutes.invalid) {
+      <mat-error>Duration must be at least 1 minute.</mat-error>
+    }
+  </mat-form-field>
+
+  <div class="actions">
+    @if (showCancel()) {
+      <button mat-button type="button" (click)="cancelled.emit()">Cancel</button>
+    }
+    <button mat-flat-button type="submit" [disabled]="saving()">
+      @if (saving()) {
+        <mat-spinner diameter="18" />
+      }
+      {{ submitLabel() }}
+    </button>
+  </div>
+</form>

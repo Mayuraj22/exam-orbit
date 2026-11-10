@@ -1,150 +1,161 @@
 import { createFeature, createReducer, on } from '@ngrx/store';
-import { AdminExamsActions } from './exams.actions';
+import { AdminExamsActions as A } from './exams.actions';
 import {
-  initialAdminExamsState,
+  candidatesAdapter,
   examsAdapter,
+  initialAdminExamsState,
   questionsAdapter,
+  RequestStatus,
   resultsAdapter,
 } from './exams.state';
 
+// Small helpers so each `on(...)` reads as "what changes", not boilerplate.
+const fetching = <S extends RequestStatus>(s: S): S => ({ ...s, loading: true, error: null });
+const saving = <S extends RequestStatus>(s: S): S => ({ ...s, saving: true, error: null });
+const done = <S extends RequestStatus>(s: S): S => ({
+  ...s,
+  loading: false,
+  saving: false,
+  error: null,
+});
+const failed = <S extends RequestStatus>(s: S, error: string): S => ({
+  ...s,
+  loading: false,
+  saving: false,
+  error,
+});
+
 const adminExamsReducer = createReducer(
   initialAdminExamsState,
-  on(AdminExamsActions.selectExam, (state, { examId }) => ({
+
+  on(A.selectExam, (state, { examId }) => ({ ...state, selectedExamId: examId })),
+
+  // Exams
+  on(A.loadExams, (state) => ({ ...state, exams: fetching(state.exams) })),
+  on(
+    A.createExam,
+    A.updateExam,
+    A.deleteExam,
+    A.publishExam,
+    A.unpublishExam,
+    A.duplicateExam,
+    (state) => ({
+      ...state,
+      exams: saving(state.exams),
+    }),
+  ),
+  on(A.loadExamsSuccess, (state, { exams }) => ({
     ...state,
-    selectedExamId: examId,
+    exams: examsAdapter.setAll(exams, done(state.exams)),
   })),
-  on(AdminExamsActions.loadExams, (state) => ({
+  on(A.createExamSuccess, A.duplicateExamSuccess, (state, { exam }) => ({
     ...state,
-    exams: { ...state.exams, loading: true, error: null },
+    exams: examsAdapter.addOne(exam, done(state.exams)),
   })),
-  on(AdminExamsActions.loadExamsSuccess, (state, { exams }) => ({
+  on(A.updateExamSuccess, A.publishExamSuccess, A.unpublishExamSuccess, (state, { exam }) => ({
     ...state,
-    exams: examsAdapter.setAll(exams, { ...state.exams, loading: false, error: null }),
+    exams: examsAdapter.upsertOne(exam, done(state.exams)),
   })),
-  on(AdminExamsActions.loadExamsFailure, (state, { error }) => ({
+  on(A.deleteExamSuccess, (state, { id }) => ({
     ...state,
-    exams: { ...state.exams, loading: false, error },
+    exams: examsAdapter.removeOne(id, done(state.exams)),
+    selectedExamId: state.selectedExamId === id ? null : state.selectedExamId,
   })),
-  on(AdminExamsActions.createExam, (state) => ({
+  on(
+    A.loadExamsFailure,
+    A.createExamFailure,
+    A.updateExamFailure,
+    A.deleteExamFailure,
+    A.publishExamFailure,
+    A.unpublishExamFailure,
+    A.duplicateExamFailure,
+    (state, { error }) => ({ ...state, exams: failed(state.exams, error) }),
+  ),
+
+  // Questions
+  on(A.loadQuestions, (state) => ({ ...state, questions: fetching(state.questions) })),
+  on(A.createQuestion, A.updateQuestion, A.deleteQuestion, (state) => ({
     ...state,
-    exams: { ...state.exams, loading: true, error: null },
+    questions: saving(state.questions),
   })),
-  on(AdminExamsActions.createExamSuccess, (state, { exam }) => ({
+  on(A.loadQuestionsSuccess, (state, { questions }) => ({
     ...state,
-    exams: examsAdapter.addOne(exam, { ...state.exams, loading: false, error: null }),
+    questions: questionsAdapter.setAll(questions, done(state.questions)),
   })),
-  on(AdminExamsActions.createExamFailure, (state, { error }) => ({
+  on(A.createQuestionSuccess, A.updateQuestionSuccess, (state, { question }) => ({
     ...state,
-    exams: { ...state.exams, loading: false, error },
+    questions: questionsAdapter.upsertOne(question, done(state.questions)),
   })),
-  on(AdminExamsActions.updateExam, (state) => ({
+  on(A.deleteQuestionSuccess, (state, { id }) => ({
     ...state,
-    exams: { ...state.exams, loading: true, error: null },
+    questions: questionsAdapter.removeOne(id, done(state.questions)),
   })),
-  on(AdminExamsActions.updateExamSuccess, (state, { exam }) => ({
+  // Optimistic: move the questions right away so the drag-drop feels instant.
+  on(A.reorderQuestions, (state, { orderedIds }) => ({
     ...state,
-    exams: examsAdapter.updateOne({ id: exam.id, changes: exam }, { ...state.exams, loading: false, error: null }),
+    questions: questionsAdapter.updateMany(
+      orderedIds.map((id, index) => ({ id, changes: { order_index: index } })),
+      saving(state.questions),
+    ),
   })),
-  on(AdminExamsActions.updateExamFailure, (state, { error }) => ({
+  on(A.reorderQuestionsSuccess, (state) => ({ ...state, questions: done(state.questions) })),
+  on(
+    A.reorderQuestionsFailure,
+    A.loadQuestionsFailure,
+    A.createQuestionFailure,
+    A.updateQuestionFailure,
+    A.deleteQuestionFailure,
+    (state, { error }) => ({ ...state, questions: failed(state.questions, error) }),
+  ),
+
+  // Candidates
+  on(A.loadCandidates, (state) => ({ ...state, candidates: fetching(state.candidates) })),
+  on(A.createCandidates, A.deleteCandidate, A.resetCandidateAttempt, (state) => ({
     ...state,
-    exams: { ...state.exams, loading: false, error },
+    candidates: saving(state.candidates),
   })),
-  on(AdminExamsActions.deleteExam, (state) => ({
+  on(A.loadCandidatesSuccess, (state, { candidates }) => ({
     ...state,
-    exams: { ...state.exams, loading: true, error: null },
+    candidates: candidatesAdapter.setAll(candidates, done(state.candidates)),
   })),
-  on(AdminExamsActions.deleteExamSuccess, (state, { id }) => ({
+  on(A.createCandidatesSuccess, (state, { candidates }) => ({
     ...state,
-    exams: examsAdapter.removeOne(id, { ...state.exams, loading: false, error: null }),
+    candidates: candidatesAdapter.addMany(candidates, done(state.candidates)),
   })),
-  on(AdminExamsActions.deleteExamFailure, (state, { error }) => ({
+  on(A.resetCandidateAttemptSuccess, (state, { candidate }) => ({
     ...state,
-    exams: { ...state.exams, loading: false, error },
+    candidates: candidatesAdapter.upsertOne(candidate, done(state.candidates)),
   })),
-  on(AdminExamsActions.publishExam, (state) => ({
+  on(A.deleteCandidateSuccess, (state, { id }) => ({
     ...state,
-    exams: { ...state.exams, loading: true, error: null },
+    candidates: candidatesAdapter.removeOne(id, done(state.candidates)),
   })),
-  on(AdminExamsActions.publishExamSuccess, (state, { exam }) => ({
+  on(
+    A.loadCandidatesFailure,
+    A.createCandidatesFailure,
+    A.deleteCandidateFailure,
+    A.resetCandidateAttemptFailure,
+    (state, { error }) => ({ ...state, candidates: failed(state.candidates, error) }),
+  ),
+
+  // Results
+  on(A.loadResultsForExam, A.loadAllResults, (state) => ({
     ...state,
-    exams: examsAdapter.updateOne({ id: exam.id, changes: exam }, { ...state.exams, loading: false, error: null }),
+    results: fetching(state.results),
   })),
-  on(AdminExamsActions.publishExamFailure, (state, { error }) => ({
+  on(A.submitGrading, (state) => ({ ...state, results: saving(state.results) })),
+  on(A.loadResultsForExamSuccess, (state, { results }) => ({
     ...state,
-    exams: { ...state.exams, loading: false, error },
+    results: resultsAdapter.setAll(results, done(state.results)),
   })),
-  on(AdminExamsActions.loadQuestions, (state) => ({
+  on(A.submitGradingSuccess, (state, { result }) => ({
     ...state,
-    questions: { ...state.questions, loading: true, error: null },
+    results: resultsAdapter.upsertOne(result, done(state.results)),
   })),
-  on(AdminExamsActions.loadQuestionsSuccess, (state, { questions }) => ({
+  on(A.loadResultsForExamFailure, A.submitGradingFailure, (state, { error }) => ({
     ...state,
-    questions: questionsAdapter.setAll(questions, { ...state.questions, loading: false, error: null }),
+    results: failed(state.results, error),
   })),
-  on(AdminExamsActions.loadQuestionsFailure, (state, { error }) => ({
-    ...state,
-    questions: { ...state.questions, loading: false, error },
-  })),
-  on(AdminExamsActions.createQuestion, (state) => ({
-    ...state,
-    questions: { ...state.questions, loading: true, error: null },
-  })),
-  on(AdminExamsActions.createQuestionSuccess, (state, { question }) => ({
-    ...state,
-    questions: questionsAdapter.addOne(question, { ...state.questions, loading: false, error: null }),
-  })),
-  on(AdminExamsActions.createQuestionFailure, (state, { error }) => ({
-    ...state,
-    questions: { ...state.questions, loading: false, error },
-  })),
-  on(AdminExamsActions.updateQuestion, (state) => ({
-    ...state,
-    questions: { ...state.questions, loading: true, error: null },
-  })),
-  on(AdminExamsActions.updateQuestionSuccess, (state, { question }) => ({
-    ...state,
-    questions: questionsAdapter.updateOne({ id: question.id, changes: question }, { ...state.questions, loading: false, error: null }),
-  })),
-  on(AdminExamsActions.updateQuestionFailure, (state, { error }) => ({
-    ...state,
-    questions: { ...state.questions, loading: false, error },
-  })),
-  on(AdminExamsActions.deleteQuestion, (state) => ({
-    ...state,
-    questions: { ...state.questions, loading: true, error: null },
-  })),
-  on(AdminExamsActions.deleteQuestionSuccess, (state, { id }) => ({
-    ...state,
-    questions: questionsAdapter.removeOne(id, { ...state.questions, loading: false, error: null }),
-  })),
-  on(AdminExamsActions.deleteQuestionFailure, (state, { error }) => ({
-    ...state,
-    questions: { ...state.questions, loading: false, error },
-  })),
-  on(AdminExamsActions.loadResultsForExam, (state) => ({
-    ...state,
-    results: { ...state.results, loading: true, error: null },
-  })),
-  on(AdminExamsActions.loadResultsForExamSuccess, (state, { results }) => ({
-    ...state,
-    results: resultsAdapter.setAll(results, { ...state.results, loading: false, error: null }),
-  })),
-  on(AdminExamsActions.loadResultsForExamFailure, (state, { error }) => ({
-    ...state,
-    results: { ...state.results, loading: false, error },
-  })),
-  on(AdminExamsActions.submitGrading, (state) => ({
-    ...state,
-    results: { ...state.results, loading: true, error: null },
-  })),
-  on(AdminExamsActions.submitGradingSuccess, (state, { result }) => ({
-    ...state,
-    results: resultsAdapter.updateOne({ id: result.id, changes: result }, { ...state.results, loading: false, error: null }),
-  })),
-  on(AdminExamsActions.submitGradingFailure, (state, { error }) => ({
-    ...state,
-    results: { ...state.results, loading: false, error },
-  }))
 );
 
 export const adminExamsFeature = createFeature({
