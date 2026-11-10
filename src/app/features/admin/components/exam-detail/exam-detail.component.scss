@@ -1,0 +1,136 @@
+.saving-bar {
+  position: sticky;
+  top: 64px;
+  z-index: 1;
+}
+
+.breadcrumbs {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 16px;
+  font: var(--mat-sys-body-medium);
+  color: var(--mat-sys-on-surface-variant);
+
+  a {
+    color: var(--mat-sys-primary);
+    text-decoration: none;
+
+    &:hover,
+    &:focus-visible {
+      text-decoration: underline;
+    }
+  }
+
+  mat-icon {
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+  }
+
+  span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+.detail-header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.title-block {
+  flex: 1 1 360px;
+  min-width: 0;
+}
+
+.title-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+
+  h1 {
+    margin: 0;
+    font: var(--mat-sys-headline-medium);
+    overflow-wrap: anywhere;
+  }
+}
+
+.description {
+  margin: 8px 0 0;
+  color: var(--mat-sys-on-surface-variant);
+  line-height: 1.5;
+}
+
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  margin-top: 8px;
+  font: var(--mat-sys-body-medium);
+  color: var(--mat-sys-on-surface-variant);
+
+  mat-icon {
+    vertical-align: -2px;
+  }
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.danger {
+  color: var(--mat-sys-error);
+
+  mat-icon {
+    color: inherit;
+  }
+}
+
+.tabs-card {
+  overflow: hidden;
+}
+
+.tab-icon {
+  margin-right: 8px;
+}
+
+// The question panel draws its own top border for the list view; not needed inside a tab.
+app-question-form ::ng-deep .question-form {
+  border-top: none;
+}
+
+.settings {
+  max-width: 640px;
+  padding: 24px 16px;
+
+  h2 {
+    margin: 0 0 8px;
+    font: var(--mat-sys-title-medium);
+  }
+}
+
+.loading-header {
+  .sk-title {
+    width: 50%;
+    height: 32px;
+    margin-bottom: 16px;
+  }
+
+  .sk-line {
+    height: 14px;
+    margin-bottom: 10px;
+
+    &.short {
+      width: 30%;
+    }
+  }
+}

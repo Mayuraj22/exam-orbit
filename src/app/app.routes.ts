@@ -1,13 +1,15 @@
 import { Routes } from '@angular/router';
 
 export const routes: Routes = [
-  {
-    path: '',
-    redirectTo: 'admin',
-    pathMatch: 'full'
-  },
+  { path: '', redirectTo: 'admin', pathMatch: 'full' },
   {
     path: 'admin',
-    loadComponent: () => import('./features/admin/components/exam-list/exam-list.component').then(m => m.ExamListComponent),
+    loadChildren: () => import('./features/admin/admin.routes').then((m) => m.ADMIN_ROUTES),
+  },
+  {
+    path: '**',
+    loadComponent: () =>
+      import('./core/pages/not-found.component').then((m) => m.NotFoundComponent),
+    title: 'Page not found · ExamOrbit',
   },
 ];

@@ -1,0 +1,199 @@
+<div class="candidates">
+  <div class="toolbar">
+    <div class="stats" aria-live="polite">
+      <span
+        ><strong>{{ stats().total }}</strong> candidates</span
+      >
+      <span
+        ><strong>{{ stats().attempted }}</strong> attempted</span
+      >
+      <span
+        ><strong>{{ stats().notStarted }}</strong> not started</span
+      >
+    </div>
+    <span class="spacer"></span>
+    <button mat-button type="button" [disabled]="!stats().total" (click)="exportCsv()">
+      <mat-icon>download</mat-icon>
+      Export CSV
+    </button>
+    @if (!allExamsMode()) {
+      <button mat-stroked-button type="button" (click)="openImport()">
+        <mat-icon>upload_file</mat-icon>
+        Import CSV
+      </button>
+      <button mat-flat-button type="button" (click)="openAdd()">
+        <mat-icon>person_add</mat-icon>
+        Add candidate
+      </button>
+    }
+  </div>
+
+  <div class="filters">
+    <mat-form-field class="search-field" appearance="outline" subscriptSizing="dynamic">
+      <mat-icon matPrefix>search</mat-icon>
+      <mat-label>Search by name or username</mat-label>
+      <input matInput [value]="search()" (input)="search.set($any($event.target).value)" />
+    </mat-form-field>
+
+    @if (allExamsMode()) {
+      <mat-form-field class="exam-field" appearance="outline" subscriptSizing="dynamic">
+        <mat-label>Exam</mat-label>
+        <mat-select [value]="examFilter()" (selectionChange)="examFilter.set($event.value)">
+          <mat-option value="all">All exams</mat-option>
+          @for (exam of exams(); track exam.id) {
+            <mat-option [value]="exam.id">{{ exam.title }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+    }
+  </div>
+
+  @if (error(); as message) {
+    <div class="error-banner" role="alert">
+      <mat-icon>error_outline</mat-icon>
+      <span>{{ message }}</span>
+      <span class="spacer"></span>
+      <button mat-button type="button" (click)="reload()">Retry</button>
+    </div>
+  }
+
+  <div class="table-wrap">
+    @if (loading() || saving()) {
+      <mat-progress-bar mode="indeterminate" aria-label="Loading candidates" />
+    }
+
+    <table
+      mat-table
+      class="responsive-table"
+      [dataSource]="dataSource"
+      matSort
+      matSortActive="name"
+      matSortDirection="asc"
+      aria-label="Candidates"
+    >
+      <ng-container matColumnDef="name">
+        <th mat-header-cell *matHeaderCellDef mat-sort-header>Name</th>
+        <td mat-cell *matCellDef="let c" data-label="Name">{{ c.name }}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="username">
+        <th mat-header-cell *matHeaderCellDef mat-sort-header>Username</th>
+        <td mat-cell *matCellDef="let c" data-label="Username" class="mono">{{ c.username }}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="passcode">
+        <th mat-header-cell *matHeaderCellDef>Passcode</th>
+        <td mat-cell *matCellDef="let c" data-label="Passcode" class="nowrap">
+          <span class="mono passcode">{{ revealed().has(c.id) ? c.passcode : '••••••' }}</span>
+          <button
+            mat-icon-button
+            type="button"
+            class="small-icon"
+            (click)="toggleReveal(c.id)"
+            [matTooltip]="revealed().has(c.id) ? 'Hide' : 'Show'"
+            [attr.aria-label]="(revealed().has(c.id) ? 'Hide' : 'Show') + ' passcode for ' + c.name"
+          >
+            <mat-icon>{{ revealed().has(c.id) ? 'visibility_off' : 'visibility' }}</mat-icon>
+          </button>
+        </td>
+      </ng-container>
+
+      <ng-container matColumnDef="exam">
+        <th mat-header-cell *matHeaderCellDef mat-sort-header="examTitle">Exam</th>
+        <td mat-cell *matCellDef="let c" data-label="Exam">
+          <a
+            class="exam-link"
+            [routerLink]="['/admin/exams', c.exam_id]"
+            [queryParams]="{ tab: 'candidates' }"
+            >{{ c.examTitle }}</a
+          >
+        </td>
+      </ng-container>
+
+      <ng-container matColumnDef="status">
+        <th mat-header-cell *matHeaderCellDef mat-sort-header>Status</th>
+        <td mat-cell *matCellDef="let c" data-label="Status">
+          <span
+            class="status-chip"
+            [class.published]="c.has_attempted"
+            [class.draft]="!c.has_attempted"
+          >
+            {{ c.has_attempted ? 'Attempted' : 'Not started' }}
+          </span>
+        </td>
+      </ng-container>
+
+      <ng-container matColumnDef="actions">
+        <th mat-header-cell *matHeaderCellDef><span class="cdk-visually-hidden">Actions</span></th>
+        <td mat-cell *matCellDef="let c" class="actions-cell">
+          <button
+            mat-icon-button
+            type="button"
+            (click)="copyCredentials(c)"
+            matTooltip="Copy login details"
+            [attr.aria-label]="'Copy login details for ' + c.name"
+          >
+            <mat-icon>content_copy</mat-icon>
+          </button>
+          <button
+            mat-icon-button
+            type="button"
+            [matMenuTriggerFor]="rowMenu"
+            [matMenuTriggerData]="{ c }"
+            [attr.aria-label]="'More actions for ' + c.name"
+          >
+            <mat-icon>more_vert</mat-icon>
+          </button>
+        </td>
+      </ng-container>
+
+      <tr mat-header-row *matHeaderRowDef="displayedColumns()"></tr>
+      <tr mat-row *matRowDef="let row; columns: displayedColumns()"></tr>
+
+      <tr class="mat-mdc-row" *matNoDataRow>
+        <td class="mat-mdc-cell no-data" [attr.colspan]="displayedColumns().length">
+          @if (loading()) {
+            Loading candidates…
+          } @else if (search()) {
+            No candidates match "{{ search() }}".
+          } @else if (allExamsMode()) {
+            No candidates yet. Open an exam to add candidates.
+          } @else {
+            No candidates yet. Add one, or import a CSV file.
+          }
+        </td>
+      </tr>
+    </table>
+
+    <mat-paginator
+      [pageSizeOptions]="[10, 25, 50]"
+      [pageSize]="10"
+      [hidePageSize]="false"
+      showFirstLastButtons
+      aria-label="Candidates pages"
+    />
+  </div>
+</div>
+
+<mat-menu #rowMenu="matMenu" xPosition="before">
+  <ng-template matMenuContent let-c="c">
+    <button mat-menu-item type="button" (click)="copyCredentials(c)">
+      <mat-icon>content_copy</mat-icon>
+      <span>Copy login details</span>
+    </button>
+    <button
+      mat-menu-item
+      type="button"
+      [disabled]="!c.has_attempted || saving()"
+      (click)="resetAttempt(c)"
+    >
+      <mat-icon>restart_alt</mat-icon>
+      <span>Reset attempt</span>
+    </button>
+    <mat-divider />
+    <button mat-menu-item type="button" class="danger" [disabled]="saving()" (click)="remove(c)">
+      <mat-icon>person_remove</mat-icon>
+      <span>Remove candidate</span>
+    </button>
+  </ng-template>
+</mat-menu>

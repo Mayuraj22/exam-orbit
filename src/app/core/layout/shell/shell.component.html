@@ -1,0 +1,69 @@
+<a class="skip-link" href="#main-content" (click)="skipToMain($event)">Skip to main content</a>
+
+<mat-sidenav-container class="shell">
+  <mat-sidenav
+    #drawer
+    class="sidenav"
+    [mode]="isHandset() ? 'over' : 'side'"
+    [opened]="!isHandset()"
+    [attr.role]="isHandset() ? 'dialog' : 'navigation'"
+  >
+    <div class="brand">
+      <mat-icon class="brand-icon">public</mat-icon>
+      <span>ExamOrbit</span>
+    </div>
+
+    <mat-nav-list aria-label="Main navigation">
+      @for (item of navItems; track item.route) {
+        @if (item.comingSoon) {
+          <a mat-list-item disabled title="Coming soon">
+            <mat-icon matListItemIcon>{{ item.icon }}</mat-icon>
+            <span matListItemTitle>{{ item.label }}</span>
+            <span matListItemMeta class="soon">Soon</span>
+          </a>
+        } @else {
+          <a
+            mat-list-item
+            [routerLink]="item.route"
+            [activated]="isActive(item)"
+            [attr.aria-current]="isActive(item) ? 'page' : null"
+            (click)="onNavigate()"
+          >
+            <mat-icon matListItemIcon>{{ item.icon }}</mat-icon>
+            <span matListItemTitle>{{ item.label }}</span>
+          </a>
+        }
+      }
+    </mat-nav-list>
+  </mat-sidenav>
+
+  <mat-sidenav-content class="content">
+    <mat-toolbar class="toolbar">
+      @if (isHandset()) {
+        <button mat-icon-button type="button" aria-label="Open menu" (click)="drawer.toggle()">
+          <mat-icon>menu</mat-icon>
+        </button>
+        <span class="toolbar-title">ExamOrbit</span>
+      } @else {
+        <span class="toolbar-title">Admin</span>
+      }
+      <span class="spacer"></span>
+      <button
+        mat-icon-button
+        type="button"
+        (click)="cycleTheme()"
+        [attr.aria-label]="'Theme: ' + themeLabel() + '. Click to change.'"
+        [title]="'Theme: ' + themeLabel()"
+      >
+        <mat-icon>{{ themeIcon() }}</mat-icon>
+      </button>
+      <button mat-icon-button type="button" aria-label="Account" title="Admin">
+        <mat-icon>account_circle</mat-icon>
+      </button>
+    </mat-toolbar>
+
+    <main id="main-content" tabindex="-1">
+      <router-outlet />
+    </main>
+  </mat-sidenav-content>
+</mat-sidenav-container>

@@ -1,0 +1,84 @@
+.intro {
+  margin: 0 0 16px;
+  color: var(--mat-sys-on-surface-variant);
+
+  code {
+    padding: 1px 6px;
+    border-radius: 4px;
+    background: var(--mat-sys-surface-container-high);
+  }
+}
+
+.file-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.file-name {
+  font: var(--mat-sys-body-medium);
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.spacer {
+  flex: 1;
+}
+
+.summary {
+  margin: 0 0 8px;
+}
+
+.preview {
+  max-height: 300px;
+  overflow: auto;
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: 8px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font: var(--mat-sys-body-medium);
+}
+
+th,
+td {
+  padding: 8px 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--mat-sys-outline-variant);
+}
+
+th {
+  position: sticky;
+  top: 0;
+  background: var(--mat-sys-surface-container-high);
+  font: var(--mat-sys-label-large);
+}
+
+tr.invalid td {
+  background: color-mix(in srgb, var(--mat-sys-error) 8%, transparent);
+}
+
+.mono {
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+}
+
+.ok {
+  color: var(--app-success-fg);
+}
+
+.bad {
+  color: var(--mat-sys-error);
+}
+
+mat-icon[inline] {
+  vertical-align: -2px;
+}
+
+mat-spinner {
+  display: inline-block;
+  margin-right: 8px;
+  vertical-align: middle;
+}

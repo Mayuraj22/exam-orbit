@@ -1,1 +1,246 @@
-/* You can add global styles to this file, and also import other style files */
+@use '@angular/material' as mat;
+
+/* ---------- Angular Material theme (Material 3) ---------- */
+html {
+  color-scheme: light dark; // follows the OS setting; light-dark() below picks the matching value
+  @include mat.theme(
+    (
+      color: (
+        primary: mat.$azure-palette,
+        tertiary: mat.$blue-palette,
+      ),
+      typography: Roboto,
+      density: 0,
+    )
+  );
+}
+
+/* ---------- App tokens (built on Material's system variables) ---------- */
+:root {
+  --app-success-bg: light-dark(#d4edda, #1e4620);
+  --app-success-fg: light-dark(#155724, #b7e4c0);
+  --app-warning-bg: light-dark(#fff3cd, #4d3d00);
+  --app-warning-fg: light-dark(#856404, #ffe08a);
+  --app-mcq-bg: light-dark(#e3f2fd, #0d2f4f);
+  --app-mcq-fg: light-dark(#0d47a1, #9fd0ff);
+  --app-input-bg: light-dark(#f3e5f5, #3d1f45);
+  --app-input-fg: light-dark(#4a148c, #e8b6f5);
+}
+
+/* ---------- Base ---------- */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: var(--mat-sys-body-large-font, Roboto, sans-serif);
+  background: var(--mat-sys-surface-container-low);
+  color: var(--mat-sys-on-surface);
+}
+
+/* ---------- Shared helpers ---------- */
+.full-width {
+  width: 100%;
+}
+
+.page {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 24px 16px 48px;
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 24px;
+
+  h1 {
+    margin: 0;
+    font: var(--mat-sys-headline-medium);
+  }
+
+  p {
+    margin: 4px 0 0;
+    color: var(--mat-sys-on-surface-variant);
+  }
+}
+
+/* Inline error banner */
+.error-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  border-radius: var(--mat-sys-corner-small, 8px);
+  background: var(--mat-sys-error-container);
+  color: var(--mat-sys-on-error-container);
+}
+
+/* Empty-state block */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 48px 16px;
+  text-align: center;
+  color: var(--mat-sys-on-surface-variant);
+
+  mat-icon {
+    width: 48px;
+    height: 48px;
+    font-size: 48px;
+    opacity: 0.6;
+  }
+
+  h3 {
+    margin: 0;
+    font: var(--mat-sys-title-medium);
+    color: var(--mat-sys-on-surface);
+  }
+
+  p {
+    margin: 0 0 8px;
+  }
+}
+
+/* Skeleton loading placeholders */
+.skeleton {
+  border-radius: 6px;
+  background: linear-gradient(
+    90deg,
+    var(--mat-sys-surface-container-high) 25%,
+    var(--mat-sys-surface-container-highest) 50%,
+    var(--mat-sys-surface-container-high) 75%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes skeleton-shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton {
+    animation: none;
+  }
+}
+
+/* Status chips (Published / Draft / MCQ / Input) */
+.status-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font: var(--mat-sys-label-medium);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+
+  &.published {
+    background: var(--app-success-bg);
+    color: var(--app-success-fg);
+  }
+  &.draft {
+    background: var(--app-warning-bg);
+    color: var(--app-warning-fg);
+  }
+  &.mcq {
+    background: var(--app-mcq-bg);
+    color: var(--app-mcq-fg);
+  }
+  &.input {
+    background: var(--app-input-bg);
+    color: var(--app-input-fg);
+  }
+}
+
+/* Snackbar variants */
+.snackbar-error {
+  --mat-snack-bar-container-color: var(--mat-sys-error);
+  --mat-snack-bar-supporting-text-color: var(--mat-sys-on-error);
+  --mat-snack-bar-button-color: var(--mat-sys-on-error);
+}
+
+/* ---------- Responsive tables ----------
+ * Add class "responsive-table" to a mat-table and data-label="…" to each cell.
+ * Below 600px each row becomes a card with "Label: value" lines.
+ */
+@media (max-width: 599px) {
+  table.responsive-table {
+    min-width: 0 !important;
+
+    thead,
+    tr.mat-mdc-header-row {
+      display: none;
+    }
+
+    tr.mat-mdc-row {
+      display: block;
+      height: auto;
+      padding: 8px 0;
+      border-bottom: 1px solid var(--mat-sys-outline-variant);
+    }
+
+    td.mat-mdc-cell {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      min-height: 36px;
+      padding: 2px 16px;
+      border: none;
+      text-align: right;
+
+      &[data-label]::before {
+        content: attr(data-label);
+        flex-shrink: 0;
+        font: var(--mat-sys-label-medium);
+        color: var(--mat-sys-on-surface-variant);
+        text-align: left;
+      }
+
+      &.no-data {
+        display: block;
+        text-align: center;
+      }
+    }
+  }
+}
+
+/* ---------- Dialogs: full screen on phones ---------- */
+@media (max-width: 599px) {
+  .cdk-overlay-pane.mat-mdc-dialog-panel {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    height: 100%;
+    max-height: 100vh !important;
+
+    .mat-mdc-dialog-container .mat-mdc-dialog-surface {
+      border-radius: 0;
+    }
+
+    .mat-mdc-dialog-content {
+      max-height: none;
+      flex: 1;
+    }
+  }
+}

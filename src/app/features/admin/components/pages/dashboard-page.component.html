@@ -1,0 +1,109 @@
+<div class="page">
+  <header class="page-header">
+    <div>
+      <h1>Dashboard</h1>
+      <p>An overview of your exams, candidates and submissions.</p>
+    </div>
+    <div class="shortcuts">
+      <a mat-stroked-button routerLink="/admin/exams">
+        <mat-icon>assignment</mat-icon>
+        All exams
+      </a>
+      <button mat-flat-button type="button" (click)="newExam()">
+        <mat-icon>add</mat-icon>
+        New Exam
+      </button>
+    </div>
+  </header>
+
+  <section class="stats" aria-label="Summary">
+    @for (stat of stats(); track stat.label) {
+      <a
+        class="stat"
+        [class.attention]="stat.attention && stat.value > 0"
+        [routerLink]="stat.link"
+        [queryParams]="stat.query"
+      >
+        <mat-icon class="stat-icon" aria-hidden="true">{{ stat.icon }}</mat-icon>
+        <span class="stat-value">
+          @if (loading() && stat.value === 0) {
+            <span class="skeleton sk-value"></span>
+          } @else {
+            {{ stat.value }}
+          }
+        </span>
+        <span class="stat-label">{{ stat.label }}</span>
+      </a>
+    }
+  </section>
+
+  <div class="panels">
+    <mat-card appearance="outlined" class="panel">
+      <mat-card-header>
+        <mat-card-title>Needs grading</mat-card-title>
+        <mat-card-subtitle>Submissions with Input answers still to mark</mat-card-subtitle>
+      </mat-card-header>
+      <mat-card-content>
+        @if (needsGrading().length) {
+          <mat-nav-list>
+            @for (r of needsGrading(); track r.id) {
+              <a
+                mat-list-item
+                [routerLink]="['/admin/exams', r.exam_id]"
+                [queryParams]="{ tab: 'results' }"
+              >
+                <mat-icon matListItemIcon>rate_review</mat-icon>
+                <span matListItemTitle>{{ r.candidateName }}</span>
+                <span matListItemLine
+                  >{{ r.examTitle }} · {{ r.submitted_at | date: 'mediumDate' }}</span
+                >
+              </a>
+            }
+          </mat-nav-list>
+          <a mat-button routerLink="/admin/results" [queryParams]="{ status: 'needs-grading' }"
+            >View all</a
+          >
+        } @else {
+          <div class="empty-state compact">
+            <mat-icon>task_alt</mat-icon>
+            <p>All caught up. Nothing to grade.</p>
+          </div>
+        }
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card appearance="outlined" class="panel">
+      <mat-card-header>
+        <mat-card-title>Recent submissions</mat-card-title>
+        <mat-card-subtitle>Latest across all exams</mat-card-subtitle>
+      </mat-card-header>
+      <mat-card-content>
+        @if (recent().length) {
+          <mat-nav-list>
+            @for (r of recent(); track r.id) {
+              <a
+                mat-list-item
+                [routerLink]="['/admin/exams', r.exam_id]"
+                [queryParams]="{ tab: 'results' }"
+              >
+                <mat-icon matListItemIcon>{{
+                  r.is_fully_graded ? 'check_circle' : 'pending'
+                }}</mat-icon>
+                <span matListItemTitle>{{ r.candidateName }}: {{ r.score ?? '—' }} correct</span>
+                <span matListItemLine
+                  >{{ r.examTitle }} · {{ r.submitted_at | date: 'medium' }}</span
+                >
+              </a>
+            }
+          </mat-nav-list>
+          <a mat-button routerLink="/admin/results">View all results</a>
+        } @else {
+          <div class="empty-state compact">
+            <mat-icon>inbox</mat-icon>
+            <p>No submissions yet.</p>
+          </div>
+        }
+      </mat-card-content>
+    </mat-card>
+  </div>
+</div>

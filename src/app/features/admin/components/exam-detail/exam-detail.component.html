@@ -1,0 +1,168 @@
+@if (saving()) {
+  <mat-progress-bar class="saving-bar" mode="indeterminate" aria-label="Saving" />
+}
+
+<div class="page">
+  <nav class="breadcrumbs" aria-label="Breadcrumb">
+    <a routerLink="/admin/exams">Exams</a>
+    <mat-icon aria-hidden="true">chevron_right</mat-icon>
+    <span aria-current="page">{{ exam()?.title ?? 'Exam' }}</span>
+  </nav>
+
+  @if (exam(); as exam) {
+    <header class="detail-header">
+      <div class="title-block">
+        <div class="title-row">
+          <h1>{{ exam.title }}</h1>
+          <span
+            class="status-chip"
+            [class.published]="exam.is_published"
+            [class.draft]="!exam.is_published"
+          >
+            {{ exam.is_published ? 'Published' : 'Draft' }}
+          </span>
+        </div>
+        @if (exam.description) {
+          <p class="description">{{ exam.description }}</p>
+        }
+        <div class="meta">
+          <span><mat-icon inline>schedule</mat-icon> {{ exam.duration_minutes }} min</span>
+          <span
+            ><mat-icon inline>event</mat-icon> Created
+            {{ exam.created_at | date: 'mediumDate' }}</span
+          >
+        </div>
+      </div>
+
+      <div class="header-actions">
+        @if (exam.is_published) {
+          <button
+            mat-stroked-button
+            type="button"
+            [disabled]="saving()"
+            (click)="examActions.unpublish(exam)"
+          >
+            <mat-icon>unpublished</mat-icon>
+            Unpublish
+          </button>
+        } @else {
+          <button
+            mat-flat-button
+            type="button"
+            [disabled]="saving()"
+            (click)="examActions.publish(exam)"
+          >
+            <mat-icon>publish</mat-icon>
+            Publish
+          </button>
+        }
+        <button
+          mat-icon-button
+          type="button"
+          [matMenuTriggerFor]="moreMenu"
+          aria-label="More actions"
+        >
+          <mat-icon>more_vert</mat-icon>
+        </button>
+        <mat-menu #moreMenu="matMenu" xPosition="before">
+          <button mat-menu-item type="button" (click)="examActions.openEditor(exam).subscribe()">
+            <mat-icon>edit</mat-icon>
+            <span>Edit details</span>
+          </button>
+          <button
+            mat-menu-item
+            type="button"
+            [disabled]="saving()"
+            (click)="examActions.duplicate(exam)"
+          >
+            <mat-icon>content_copy</mat-icon>
+            <span>Duplicate</span>
+          </button>
+          <mat-divider />
+          <button
+            mat-menu-item
+            type="button"
+            class="danger"
+            [disabled]="saving()"
+            (click)="examActions.delete(exam)"
+          >
+            <mat-icon>delete_outline</mat-icon>
+            <span>Delete</span>
+          </button>
+        </mat-menu>
+      </div>
+    </header>
+
+    <mat-card appearance="outlined" class="tabs-card">
+      <mat-tab-group
+        [selectedIndex]="selectedTabIndex()"
+        (selectedIndexChange)="onTabChange($event)"
+        animationDuration="150ms"
+      >
+        <mat-tab>
+          <ng-template mat-tab-label>
+            <mat-icon class="tab-icon">quiz</mat-icon>
+            Questions
+          </ng-template>
+          <!-- Same component as the inline "Manage Questions" panel on the list. -->
+          <app-question-form [examId]="exam.id" />
+        </mat-tab>
+
+        <mat-tab>
+          <ng-template mat-tab-label>
+            <mat-icon class="tab-icon">groups</mat-icon>
+            Candidates
+          </ng-template>
+          <ng-template matTabContent>
+            <app-candidates-table [examId]="exam.id" />
+          </ng-template>
+        </mat-tab>
+
+        <mat-tab>
+          <ng-template mat-tab-label>
+            <mat-icon class="tab-icon">insights</mat-icon>
+            Results
+          </ng-template>
+          <ng-template matTabContent>
+            <app-results-table [examId]="exam.id" />
+          </ng-template>
+        </mat-tab>
+
+        <mat-tab>
+          <ng-template mat-tab-label>
+            <mat-icon class="tab-icon">tune</mat-icon>
+            Settings
+          </ng-template>
+          <div class="settings">
+            <h2>Exam details</h2>
+            <app-exam-form
+              [exam]="exam"
+              [saving]="saving()"
+              [showCancel]="false"
+              submitLabel="Save changes"
+              (submitted)="saveSettings($event)"
+            />
+          </div>
+        </mat-tab>
+      </mat-tab-group>
+    </mat-card>
+  } @else if (notFound()) {
+    <div class="empty-state">
+      <mat-icon>search_off</mat-icon>
+      <h3>Exam not found</h3>
+      <p>It may have been deleted, or the link is wrong.</p>
+      <a mat-flat-button routerLink="/admin/exams">Back to exams</a>
+    </div>
+  } @else if (error(); as message) {
+    <div class="error-banner" role="alert">
+      <mat-icon>error_outline</mat-icon>
+      <span>{{ message }}</span>
+    </div>
+  } @else {
+    <div class="loading-header" aria-busy="true" aria-label="Loading exam">
+      <div class="skeleton sk-title"></div>
+      <div class="skeleton sk-line"></div>
+      <div class="skeleton sk-line short"></div>
+    </div>
+  }
+</div>

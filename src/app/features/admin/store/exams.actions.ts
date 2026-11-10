@@ -2,6 +2,7 @@ import { createActionGroup, emptyProps, props } from '@ngrx/store';
 import { Exam } from '../../../shared/models/exam.model';
 import { Question } from '../../../shared/models/question.model';
 import { Result } from '../../../shared/models/result.model';
+import { Candidate } from '../../../shared/models/candidate.model';
 
 export const AdminExamsActions = createActionGroup({
   source: 'Admin Exams',
@@ -26,6 +27,15 @@ export const AdminExamsActions = createActionGroup({
     'Publish Exam Success': props<{ exam: Exam }>(),
     'Publish Exam Failure': props<{ error: string }>(),
 
+    'Unpublish Exam': props<{ id: string }>(),
+    'Unpublish Exam Success': props<{ exam: Exam }>(),
+    'Unpublish Exam Failure': props<{ error: string }>(),
+
+    /** Copies the exam and all its questions as a new draft. */
+    'Duplicate Exam': props<{ id: string }>(),
+    'Duplicate Exam Success': props<{ exam: Exam }>(),
+    'Duplicate Exam Failure': props<{ error: string }>(),
+
     'Select Exam': props<{ examId: string | null }>(),
 
     'Load Questions': props<{ examId: string }>(),
@@ -44,12 +54,42 @@ export const AdminExamsActions = createActionGroup({
     'Delete Question Success': props<{ id: string }>(),
     'Delete Question Failure': props<{ error: string }>(),
 
+    /** Applied to the store immediately (optimistic), then saved. */
+    'Reorder Questions': props<{ examId: string; orderedIds: string[] }>(),
+    'Reorder Questions Success': emptyProps(),
+    'Reorder Questions Failure': props<{ examId: string; error: string }>(),
+
+    /** examId omitted = all candidates across exams. */
+    'Load Candidates': props<{ examId?: string }>(),
+    'Load Candidates Success': props<{ candidates: Candidate[] }>(),
+    'Load Candidates Failure': props<{ error: string }>(),
+
+    /** One or many (CSV import); saved in a single request. */
+    'Create Candidates': props<{ candidates: Omit<Candidate, 'id'>[] }>(),
+    'Create Candidates Success': props<{ candidates: Candidate[] }>(),
+    'Create Candidates Failure': props<{ error: string }>(),
+
+    'Delete Candidate': props<{ id: string }>(),
+    'Delete Candidate Success': props<{ id: string }>(),
+    'Delete Candidate Failure': props<{ error: string }>(),
+
+    /** Lets a candidate take the exam again (has_attempted → false). */
+    'Reset Candidate Attempt': props<{ id: string }>(),
+    'Reset Candidate Attempt Success': props<{ candidate: Candidate }>(),
+    'Reset Candidate Attempt Failure': props<{ error: string }>(),
+
+    'Load All Results': emptyProps(),
+
     'Load Results For Exam': props<{ examId: string }>(),
     'Load Results For Exam Success': props<{ results: Result[] }>(),
     'Load Results For Exam Failure': props<{ error: string }>(),
 
-    'Grade Answer': props<{ resultId: string; questionId: string; isCorrect: boolean }>(),
-    'Submit Grading': props<{ resultId: string; gradedAnswers: Record<string, boolean>; newScore: number; isFullyGraded: boolean }>(),
+    'Submit Grading': props<{
+      resultId: string;
+      gradedAnswers: Record<string, boolean>;
+      newScore: number;
+      isFullyGraded: boolean;
+    }>(),
     'Submit Grading Success': props<{ result: Result }>(),
     'Submit Grading Failure': props<{ error: string }>(),
   },

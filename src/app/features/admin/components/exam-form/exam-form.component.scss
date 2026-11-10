@@ -1,0 +1,22 @@
+.exam-form {
+  display: flex;
+  flex-direction: column;
+  padding-top: 8px;
+}
+
+.duration-field {
+  width: 220px;
+  max-width: 100%;
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+mat-spinner {
+  display: inline-block;
+  margin-right: 8px;
+  vertical-align: middle;
+}

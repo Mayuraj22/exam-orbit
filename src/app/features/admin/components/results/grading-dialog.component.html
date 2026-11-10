@@ -1,0 +1,115 @@
+<h2 mat-dialog-title>
+  Grade: {{ data.candidateName }}
+  <span class="subtitle">{{ data.examTitle }}</span>
+</h2>
+
+<mat-dialog-content>
+  @if (result(); as result) {
+    <div class="summary">
+      <div class="score-box">
+        <span class="score">{{ score() }} / {{ answers().length }}</span>
+        <span class="percent">{{ percent() }}%</span>
+      </div>
+      <div class="summary-meta">
+        <span
+          ><mat-icon inline>event</mat-icon> Submitted
+          {{ result.submitted_at | date: 'medium' }}</span
+        >
+        @if (pending()) {
+          <span class="pending"
+            ><mat-icon inline>pending</mat-icon> {{ pending() }} answer{{
+              pending() === 1 ? '' : 's'
+            }}
+            still need marking</span
+          >
+        } @else {
+          <span class="done"><mat-icon inline>task_alt</mat-icon> Every answer is marked</span>
+        }
+      </div>
+    </div>
+
+    @if (questionsLoading() && answers().length === 0) {
+      <mat-progress-bar mode="indeterminate" aria-label="Loading questions" />
+    }
+
+    <ol class="answers">
+      @for (a of answers(); track a.question.id; let i = $index) {
+        <li
+          class="answer"
+          [class.correct]="a.correct === true"
+          [class.wrong]="a.correct === false"
+          [class.unmarked]="a.correct === null"
+        >
+          <div class="answer-header">
+            <span class="q-number">Q{{ i + 1 }}</span>
+            <span
+              class="status-chip"
+              [class.mcq]="a.question.question_type === 'mcq'"
+              [class.input]="a.question.question_type === 'input'"
+            >
+              {{ a.question.question_type === 'mcq' ? 'MCQ' : 'Input' }}
+            </span>
+            <span class="spacer"></span>
+            @if (a.question.question_type === 'mcq') {
+              <span class="auto-label">
+                <mat-icon inline>{{ a.correct ? 'check_circle' : 'cancel' }}</mat-icon>
+                Auto-marked {{ a.correct ? 'correct' : 'wrong' }}
+              </span>
+            } @else {
+              <mat-button-toggle-group
+                [value]="a.correct"
+                (change)="mark(a.question.id, $event.value)"
+                [attr.aria-label]="'Mark question ' + (i + 1)"
+                hideSingleSelectionIndicator
+              >
+                <mat-button-toggle [value]="true" class="t-correct"
+                  ><mat-icon>check</mat-icon> Correct</mat-button-toggle
+                >
+                <mat-button-toggle [value]="false" class="t-wrong"
+                  ><mat-icon>close</mat-icon> Wrong</mat-button-toggle
+                >
+              </mat-button-toggle-group>
+            }
+          </div>
+
+          <p class="q-text">{{ a.question.question_text }}</p>
+
+          <dl class="compare">
+            <dt>Candidate's answer</dt>
+            <dd [class.empty]="!a.answerText">{{ a.answerText || 'No answer' }}</dd>
+            <dt>Correct answer</dt>
+            <dd>{{ a.correctText || '—' }}</dd>
+          </dl>
+
+          @if (a.source === 'suggested') {
+            <p class="hint">
+              <mat-icon inline>auto_awesome</mat-icon> Exact match, so marked correct. Change it if
+              needed.
+            </p>
+          }
+        </li>
+      } @empty {
+        @if (!questionsLoading()) {
+          <li class="empty">This exam has no questions.</li>
+        }
+      }
+    </ol>
+  } @else {
+    <p>This result could not be found. It may have been removed.</p>
+  }
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button type="button" mat-dialog-close>Cancel</button>
+  <button
+    mat-flat-button
+    type="button"
+    [disabled]="!result() || saving() || answers().length === 0"
+    (click)="save()"
+  >
+    @if (saving()) {
+      <mat-spinner diameter="18" />
+    }
+    {{ pending() ? 'Save progress' : 'Save grading' }}
+  </button>
+</mat-dialog-actions>

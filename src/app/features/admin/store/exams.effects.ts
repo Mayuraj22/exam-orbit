@@ -1,174 +1,293 @@
 import { inject } from '@angular/core';
 import { Actions, createEffect, ofType } from '@ngrx/effects';
-import { catchError, map, mergeMap, switchMap } from 'rxjs/operators';
+import { catchError, concatMap, map, mergeMap, switchMap } from 'rxjs/operators';
 import { of } from 'rxjs';
-import { AdminExamsActions } from './exams.actions';
+import { AdminExamsActions as A } from './exams.actions';
 import { SupabaseService } from '../../../core/services/supabase';
 
-export const loadExams$ = createEffect(() => {
-  const actions$ = inject(Actions);
-  const supabaseService = inject(SupabaseService);
+/**
+ * Operator choice:
+ * - switchMap  for reads: a newer load makes the older one irrelevant.
+ * - concatMap  for creates/updates: run in order, never drop a write.
+ * - mergeMap   for deletes: independent of each other, safe to run in parallel.
+ */
 
-  return actions$.pipe(
-    ofType(AdminExamsActions.loadExams),
-    switchMap(() =>
-      supabaseService.getExams().pipe(
-        map((exams) => AdminExamsActions.loadExamsSuccess({ exams })),
-        catchError((error) => of(AdminExamsActions.loadExamsFailure({ error: error.message })))
-      )
-    )
-  );
-}, { functional: true });
+const toMessage = (error: unknown): string =>
+  error instanceof Error
+    ? error.message
+    : ((error as { message?: string })?.message ?? 'Something went wrong');
 
-export const createExam$ = createEffect(() => {
-  const actions$ = inject(Actions);
-  const supabaseService = inject(SupabaseService);
+export const loadExams$ = createEffect(
+  (actions$ = inject(Actions), api = inject(SupabaseService)) =>
+    actions$.pipe(
+      ofType(A.loadExams),
+      switchMap(() =>
+        api.getExams().pipe(
+          map((exams) => A.loadExamsSuccess({ exams })),
+          catchError((e) => of(A.loadExamsFailure({ error: toMessage(e) }))),
+        ),
+      ),
+    ),
+  { functional: true },
+);
 
-  return actions$.pipe(
-    ofType(AdminExamsActions.createExam),
-    switchMap(({ exam }) =>
-      supabaseService.createExam(exam).pipe(
-        map((exam) => AdminExamsActions.createExamSuccess({ exam })),
-        catchError((error) => of(AdminExamsActions.createExamFailure({ error: error.message })))
-      )
-    )
-  );
-}, { functional: true });
+export const createExam$ = createEffect(
+  (actions$ = inject(Actions), api = inject(SupabaseService)) =>
+    actions$.pipe(
+      ofType(A.createExam),
+      concatMap(({ exam }) =>
+        api.createExam(exam).pipe(
+          map((created) => A.createExamSuccess({ exam: created })),
+          catchError((e) => of(A.createExamFailure({ error: toMessage(e) }))),
+        ),
+      ),
+    ),
+  { functional: true },
+);
 
-export const updateExam$ = createEffect(() => {
-  const actions$ = inject(Actions);
-  const supabaseService = inject(SupabaseService);
+export const updateExam$ = createEffect(
+  (actions$ = inject(Actions), api = inject(SupabaseService)) =>
+    actions$.pipe(
+      ofType(A.updateExam),
+      concatMap(({ id, changes }) =>
+        api.updateExam(id, changes).pipe(
+          map((exam) => A.updateExamSuccess({ exam })),
+          catchError((e) => of(A.updateExamFailure({ error: toMessage(e) }))),
+        ),
+      ),
+    ),
+  { functional: true },
+);
 
-  return actions$.pipe(
-    ofType(AdminExamsActions.updateExam),
-    switchMap(({ id, changes }) =>
-      supabaseService.updateExam(id, changes).pipe(
-        map((exam) => AdminExamsActions.updateExamSuccess({ exam })),
-        catchError((error) => of(AdminExamsActions.updateExamFailure({ error: error.message })))
-      )
-    )
-  );
-}, { functional: true });
+export const deleteExam$ = createEffect(
+  (actions$ = inject(Actions), api = inject(SupabaseService)) =>
+    actions$.pipe(
+      ofType(A.deleteExam),
+      mergeMap(({ id }) =>
+        api.deleteExam(id).pipe(
+          map(() => A.deleteExamSuccess({ id })),
+          catchError((e) => of(A.deleteExamFailure({ error: toMessage(e) }))),
+        ),
+      ),
+    ),
+  { functional: true },
+);
 
-export const deleteExam$ = createEffect(() => {
-  const actions$ = inject(Actions);
-  const supabaseService = inject(SupabaseService);
+export const publishExam$ = createEffect(
+  (actions$ = inject(Actions), api = inject(SupabaseService)) =>
+    actions$.pipe(
+      ofType(A.publishExam),
+      concatMap(({ id }) =>
+        api.publishExam(id).pipe(
+          map((exam) => A.publishExamSuccess({ exam })),
+          catchError((e) => of(A.publishExamFailure({ error: toMessage(e) }))),
+        ),
+      ),
+    ),
+  { functional: true },
+);
 
-  return actions$.pipe(
-    ofType(AdminExamsActions.deleteExam),
-    mergeMap(({ id }) =>
-      supabaseService.deleteExam(id).pipe(
-        map(() => AdminExamsActions.deleteExamSuccess({ id })),
-        catchError((error) => of(AdminExamsActions.deleteExamFailure({ error: error.message })))
-      )
-    )
-  );
-}, { functional: true });
+export const unpublishExam$ = createEffect(
+  (actions$ = inject(Actions), api = inject(SupabaseService)) =>
+    actions$.pipe(
+      ofType(A.unpublishExam),
+      concatMap(({ id }) =>
+        api.unpublishExam(id).pipe(
+          map((exam) => A.unpublishExamSuccess({ exam })),
+          catchError((e) => of(A.unpublishExamFailure({ error: toMessage(e) }))),
+        ),
+      ),
+    ),
+  { functional: true },
+);
 
-export const publishExam$ = createEffect(() => {
-  const actions$ = inject(Actions);
-  const supabaseService = inject(SupabaseService);
+export const duplicateExam$ = createEffect(
+  (actions$ = inject(Actions), api = inject(SupabaseService)) =>
+    actions$.pipe(
+      ofType(A.duplicateExam),
+      concatMap(({ id }) =>
+        api.duplicateExam(id).pipe(
+          map((exam) => A.duplicateExamSuccess({ exam })),
+          catchError((e) => of(A.duplicateExamFailure({ error: toMessage(e) }))),
+        ),
+      ),
+    ),
+  { functional: true },
+);
 
-  return actions$.pipe(
-    ofType(AdminExamsActions.publishExam),
-    switchMap(({ id }) =>
-      supabaseService.publishExam(id).pipe(
-        map((exam) => AdminExamsActions.publishExamSuccess({ exam })),
-        catchError((error) => of(AdminExamsActions.publishExamFailure({ error: error.message })))
-      )
-    )
-  );
-}, { functional: true });
+/** If saving a new order fails, reload so the list matches the database again. */
+export const reorderQuestions$ = createEffect(
+  (actions$ = inject(Actions), api = inject(SupabaseService)) =>
+    actions$.pipe(
+      ofType(A.reorderQuestions),
+      concatMap(({ examId, orderedIds }) =>
+        api.reorderQuestions(orderedIds).pipe(
+          map(() => A.reorderQuestionsSuccess()),
+          catchError((e) =>
+            of(
+              A.reorderQuestionsFailure({ examId, error: toMessage(e) }),
+              A.loadQuestions({ examId }),
+            ),
+          ),
+        ),
+      ),
+    ),
+  { functional: true },
+);
 
-export const loadQuestions$ = createEffect(() => {
-  const actions$ = inject(Actions);
-  const supabaseService = inject(SupabaseService);
+export const loadQuestions$ = createEffect(
+  (actions$ = inject(Actions), api = inject(SupabaseService)) =>
+    actions$.pipe(
+      ofType(A.loadQuestions),
+      switchMap(({ examId }) =>
+        api.getQuestionsByExamId(examId).pipe(
+          map((questions) => A.loadQuestionsSuccess({ questions })),
+          catchError((e) => of(A.loadQuestionsFailure({ error: toMessage(e) }))),
+        ),
+      ),
+    ),
+  { functional: true },
+);
 
-  return actions$.pipe(
-    ofType(AdminExamsActions.loadQuestions),
-    switchMap(({ examId }) =>
-      supabaseService.getQuestionsByExamId(examId).pipe(
-        map((questions) => AdminExamsActions.loadQuestionsSuccess({ questions })),
-        catchError((error) => of(AdminExamsActions.loadQuestionsFailure({ error: error.message })))
-      )
-    )
-  );
-}, { functional: true });
+export const createQuestion$ = createEffect(
+  (actions$ = inject(Actions), api = inject(SupabaseService)) =>
+    actions$.pipe(
+      ofType(A.createQuestion),
+      concatMap(({ question }) =>
+        api.createQuestion(question).pipe(
+          map((created) => A.createQuestionSuccess({ question: created })),
+          catchError((e) => of(A.createQuestionFailure({ error: toMessage(e) }))),
+        ),
+      ),
+    ),
+  { functional: true },
+);
 
-export const createQuestion$ = createEffect(() => {
-  const actions$ = inject(Actions);
-  const supabaseService = inject(SupabaseService);
+export const updateQuestion$ = createEffect(
+  (actions$ = inject(Actions), api = inject(SupabaseService)) =>
+    actions$.pipe(
+      ofType(A.updateQuestion),
+      concatMap(({ id, changes }) =>
+        api.updateQuestion(id, changes).pipe(
+          map((question) => A.updateQuestionSuccess({ question })),
+          catchError((e) => of(A.updateQuestionFailure({ error: toMessage(e) }))),
+        ),
+      ),
+    ),
+  { functional: true },
+);
 
-  return actions$.pipe(
-    ofType(AdminExamsActions.createQuestion),
-    switchMap(({ question }) =>
-      supabaseService.createQuestion(question).pipe(
-        map((question) => AdminExamsActions.createQuestionSuccess({ question })),
-        catchError((error) => of(AdminExamsActions.createQuestionFailure({ error: error.message })))
-      )
-    )
-  );
-}, { functional: true });
+export const deleteQuestion$ = createEffect(
+  (actions$ = inject(Actions), api = inject(SupabaseService)) =>
+    actions$.pipe(
+      ofType(A.deleteQuestion),
+      mergeMap(({ id }) =>
+        api.deleteQuestion(id).pipe(
+          map(() => A.deleteQuestionSuccess({ id })),
+          catchError((e) => of(A.deleteQuestionFailure({ error: toMessage(e) }))),
+        ),
+      ),
+    ),
+  { functional: true },
+);
 
-export const updateQuestion$ = createEffect(() => {
-  const actions$ = inject(Actions);
-  const supabaseService = inject(SupabaseService);
+export const loadCandidates$ = createEffect(
+  (actions$ = inject(Actions), api = inject(SupabaseService)) =>
+    actions$.pipe(
+      ofType(A.loadCandidates),
+      switchMap(({ examId }) =>
+        (examId ? api.getCandidatesByExamId(examId) : api.getAllCandidates()).pipe(
+          map((candidates) => A.loadCandidatesSuccess({ candidates })),
+          catchError((e) => of(A.loadCandidatesFailure({ error: toMessage(e) }))),
+        ),
+      ),
+    ),
+  { functional: true },
+);
 
-  return actions$.pipe(
-    ofType(AdminExamsActions.updateQuestion),
-    switchMap(({ id, changes }) =>
-      supabaseService.updateQuestion(id, changes).pipe(
-        map((question) => AdminExamsActions.updateQuestionSuccess({ question })),
-        catchError((error) => of(AdminExamsActions.updateQuestionFailure({ error: error.message })))
-      )
-    )
-  );
-}, { functional: true });
+export const createCandidates$ = createEffect(
+  (actions$ = inject(Actions), api = inject(SupabaseService)) =>
+    actions$.pipe(
+      ofType(A.createCandidates),
+      concatMap(({ candidates }) =>
+        api.createCandidates(candidates).pipe(
+          map((created) => A.createCandidatesSuccess({ candidates: created })),
+          catchError((e) => of(A.createCandidatesFailure({ error: toMessage(e) }))),
+        ),
+      ),
+    ),
+  { functional: true },
+);
 
-export const deleteQuestion$ = createEffect(() => {
-  const actions$ = inject(Actions);
-  const supabaseService = inject(SupabaseService);
+export const deleteCandidate$ = createEffect(
+  (actions$ = inject(Actions), api = inject(SupabaseService)) =>
+    actions$.pipe(
+      ofType(A.deleteCandidate),
+      mergeMap(({ id }) =>
+        api.deleteCandidate(id).pipe(
+          map(() => A.deleteCandidateSuccess({ id })),
+          catchError((e) => of(A.deleteCandidateFailure({ error: toMessage(e) }))),
+        ),
+      ),
+    ),
+  { functional: true },
+);
 
-  return actions$.pipe(
-    ofType(AdminExamsActions.deleteQuestion),
-    mergeMap(({ id }) =>
-      supabaseService.deleteQuestion(id).pipe(
-        map(() => AdminExamsActions.deleteQuestionSuccess({ id })),
-        catchError((error) => of(AdminExamsActions.deleteQuestionFailure({ error: error.message })))
-      )
-    )
-  );
-}, { functional: true });
+export const resetCandidateAttempt$ = createEffect(
+  (actions$ = inject(Actions), api = inject(SupabaseService)) =>
+    actions$.pipe(
+      ofType(A.resetCandidateAttempt),
+      concatMap(({ id }) =>
+        api.updateCandidate(id, { has_attempted: false }).pipe(
+          map((candidate) => A.resetCandidateAttemptSuccess({ candidate })),
+          catchError((e) => of(A.resetCandidateAttemptFailure({ error: toMessage(e) }))),
+        ),
+      ),
+    ),
+  { functional: true },
+);
 
-export const loadResultsForExam$ = createEffect(() => {
-  const actions$ = inject(Actions);
-  const supabaseService = inject(SupabaseService);
+export const loadAllResults$ = createEffect(
+  (actions$ = inject(Actions), api = inject(SupabaseService)) =>
+    actions$.pipe(
+      ofType(A.loadAllResults),
+      switchMap(() =>
+        api.getAllResults().pipe(
+          map((results) => A.loadResultsForExamSuccess({ results })),
+          catchError((e) => of(A.loadResultsForExamFailure({ error: toMessage(e) }))),
+        ),
+      ),
+    ),
+  { functional: true },
+);
 
-  return actions$.pipe(
-    ofType(AdminExamsActions.loadResultsForExam),
-    switchMap(({ examId }) =>
-      supabaseService.getResultsByExamId(examId).pipe(
-        map((results) => AdminExamsActions.loadResultsForExamSuccess({ results })),
-        catchError((error) => of(AdminExamsActions.loadResultsForExamFailure({ error: error.message })))
-      )
-    )
-  );
-}, { functional: true });
+export const loadResultsForExam$ = createEffect(
+  (actions$ = inject(Actions), api = inject(SupabaseService)) =>
+    actions$.pipe(
+      ofType(A.loadResultsForExam),
+      switchMap(({ examId }) =>
+        api.getResultsByExamId(examId).pipe(
+          map((results) => A.loadResultsForExamSuccess({ results })),
+          catchError((e) => of(A.loadResultsForExamFailure({ error: toMessage(e) }))),
+        ),
+      ),
+    ),
+  { functional: true },
+);
 
-export const submitGrading$ = createEffect(() => {
-  const actions$ = inject(Actions);
-  const supabaseService = inject(SupabaseService);
-
-  return actions$.pipe(
-    ofType(AdminExamsActions.submitGrading),
-    switchMap(({ resultId, gradedAnswers, newScore, isFullyGraded }) =>
-      supabaseService.updateResultGrading(resultId, gradedAnswers, newScore, isFullyGraded).pipe(
-        map((result) => AdminExamsActions.submitGradingSuccess({ result })),
-        catchError((error) => of(AdminExamsActions.submitGradingFailure({ error: error.message })))
-      )
-    )
-  );
-}, { functional: true });
+export const submitGrading$ = createEffect(
+  (actions$ = inject(Actions), api = inject(SupabaseService)) =>
+    actions$.pipe(
+      ofType(A.submitGrading),
+      concatMap(({ resultId, gradedAnswers, newScore, isFullyGraded }) =>
+        api.updateResultGrading(resultId, gradedAnswers, newScore, isFullyGraded).pipe(
+          map((result) => A.submitGradingSuccess({ result })),
+          catchError((e) => of(A.submitGradingFailure({ error: toMessage(e) }))),
+        ),
+      ),
+    ),
+  { functional: true },
+);
 
 export const adminExamsEffects = {
   loadExams$,
@@ -176,10 +295,18 @@ export const adminExamsEffects = {
   updateExam$,
   deleteExam$,
   publishExam$,
+  unpublishExam$,
+  duplicateExam$,
+  reorderQuestions$,
   loadQuestions$,
   createQuestion$,
   updateQuestion$,
   deleteQuestion$,
+  loadCandidates$,
+  createCandidates$,
+  deleteCandidate$,
+  resetCandidateAttempt$,
+  loadAllResults$,
   loadResultsForExam$,
   submitGrading$,
 };

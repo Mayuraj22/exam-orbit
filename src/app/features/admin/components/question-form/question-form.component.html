@@ -1,126 +1,232 @@
 <div class="question-form">
-  <div class="questions-section">
-    <h3>Questions for this Exam</h3>
+  <section class="questions-section" aria-labelledby="questions-heading">
+    <h3 id="questions-heading">
+      Questions
+      @if (questions().length) {
+        <span class="count">{{ questions().length }}</span>
+      }
+    </h3>
 
-    <!-- Loading State -->
-    <div *ngIf="loading$ | async" class="loading">
-      <p>Loading questions...</p>
-    </div>
-
-    <!-- Error State -->
-    <div *ngIf="error$ | async as error" class="error">
-      <p>Error loading questions: {{ error }}</p>
-    </div>
-
-    <!-- Questions List -->
-    <div *ngIf="(filteredQuestions$ | async) as questions" class="questions-list">
-      <div *ngIf="questions.length === 0" class="empty-state">
-        <p>No questions yet. Add your first question below.</p>
+    @if (error(); as message) {
+      <div class="error-banner" role="alert">
+        <mat-icon>error_outline</mat-icon>
+        <span>{{ message }}</span>
       </div>
+    }
 
-      <div *ngFor="let question of questions" class="question-card card">
-        <div class="question-header">
-          <span class="question-number">Q{{ question.order_index + 1 }}</span>
-          <span class="type-badge" [class.mcq]="question.question_type === 'mcq'" [class.input]="question.question_type === 'input'">
-            {{ question.question_type === 'mcq' ? 'MCQ' : 'Input' }}
-          </span>
-        </div>
-        <p class="question-text">{{ question.question_text }}</p>
-        <div *ngIf="question.question_type === 'mcq' && question.options" class="options-list">
-          <div *ngFor="let option of question.options" class="option-item">
-            <span class="option-text">{{ option.text }}</span>
+    @if (loading() && questions().length === 0) {
+      <div class="questions-list" aria-busy="true" aria-label="Loading questions">
+        @for (s of [1, 2]; track s) {
+          <div class="question-item">
+            <div class="skeleton sk-line"></div>
+            <div class="skeleton sk-line short"></div>
           </div>
-        </div>
-        <div class="question-actions">
-          <button class="btn btn-danger btn-sm" (click)="deleteQuestion(question.id)">Delete</button>
-        </div>
+        }
       </div>
-    </div>
-  </div>
-
-  <!-- New Question Form -->
-  <div class="new-question-section card">
-    <h3>Add New Question</h3>
-
-    <div class="question-type-toggle">
-      <button
-        class="type-btn"
-        [class.active]="questionType === 'mcq'"
-        (click)="setQuestionType('mcq')"
+    } @else {
+      @if (questions().length > 1) {
+        <p class="reorder-hint">
+          <mat-icon inline>drag_indicator</mat-icon> Drag questions to reorder them.
+        </p>
+      }
+      <ol
+        class="questions-list"
+        cdkDropList
+        [cdkDropListDisabled]="saving()"
+        (cdkDropListDropped)="drop($event)"
       >
-        Multiple Choice
-      </button>
-      <button
-        class="type-btn"
-        [class.active]="questionType === 'input'"
-        (click)="setQuestionType('input')"
-      >
-        Input
-      </button>
-    </div>
+        @for (
+          question of questions();
+          track question.id;
+          let i = $index;
+          let first = $first;
+          let last = $last
+        ) {
+          <li class="question-item" cdkDrag [class.editing]="editingId() === question.id">
+            <div class="drag-placeholder" *cdkDragPlaceholder></div>
+            <div class="question-header">
+              <mat-icon class="drag-handle" cdkDragHandle aria-hidden="true"
+                >drag_indicator</mat-icon
+              >
+              <span class="question-number">Q{{ i + 1 }}</span>
+              <span
+                class="status-chip"
+                [class.mcq]="question.question_type === 'mcq'"
+                [class.input]="question.question_type === 'input'"
+              >
+                {{ question.question_type === 'mcq' ? 'MCQ' : 'Input' }}
+              </span>
+              @if (editingId() === question.id) {
+                <span class="editing-label">Editing</span>
+              }
+              <span class="spacer"></span>
+              <button
+                mat-icon-button
+                type="button"
+                class="move-btn"
+                [disabled]="first || saving()"
+                (click)="move(i, -1)"
+                matTooltip="Move up"
+                [attr.aria-label]="'Move question ' + (i + 1) + ' up'"
+              >
+                <mat-icon>arrow_upward</mat-icon>
+              </button>
+              <button
+                mat-icon-button
+                type="button"
+                class="move-btn"
+                [disabled]="last || saving()"
+                (click)="move(i, 1)"
+                matTooltip="Move down"
+                [attr.aria-label]="'Move question ' + (i + 1) + ' down'"
+              >
+                <mat-icon>arrow_downward</mat-icon>
+              </button>
+              <button
+                mat-icon-button
+                type="button"
+                (click)="startEdit(question)"
+                matTooltip="Edit question"
+                [attr.aria-label]="'Edit question ' + (i + 1)"
+              >
+                <mat-icon>edit</mat-icon>
+              </button>
+              <button
+                mat-icon-button
+                type="button"
+                class="delete-btn"
+                [disabled]="saving()"
+                (click)="deleteQuestion(question)"
+                matTooltip="Delete question"
+                [attr.aria-label]="'Delete question ' + (i + 1)"
+              >
+                <mat-icon>delete_outline</mat-icon>
+              </button>
+            </div>
 
-    <form [formGroup]="questionForm" (ngSubmit)="submitQuestion()">
-      <div class="form-group">
-        <label for="question-text">Question Text *</label>
-        <textarea
-          id="question-text"
-          formControlName="question_text"
-          placeholder="Enter your question"
-          class="form-control"
-          rows="3"
-        ></textarea>
-      </div>
+            <p class="question-text">{{ question.question_text }}</p>
 
-      <!-- MCQ Options -->
-      <div *ngIf="questionType === 'mcq'" formArrayName="options" class="options-section">
-        <label>Options *</label>
-        <div *ngFor="let option of options.controls; let i = index" [formGroupName]="i" class="option-input-group">
-          <input
-            type="text"
-            formControlName="text"
-            placeholder="Option {{ i + 1 }}"
-            class="form-control option-input"
-          />
-          <button
-            type="button"
-            class="btn btn-danger btn-sm"
-            (click)="removeOption(i)"
-            [disabled]="options.length <= 2"
+            @if (question.question_type === 'mcq' && question.options) {
+              <ul class="options-list">
+                @for (option of question.options; track option.id) {
+                  <li [class.correct]="isCorrectOption(question, option)">
+                    <mat-icon inline>{{
+                      isCorrectOption(question, option) ? 'check_circle' : 'radio_button_unchecked'
+                    }}</mat-icon>
+                    {{ option.text }}
+                  </li>
+                }
+              </ul>
+            } @else if (question.correct_answer) {
+              <p class="answer">
+                <mat-icon inline>check_circle</mat-icon> {{ question.correct_answer }}
+              </p>
+            }
+          </li>
+        } @empty {
+          @if (!error()) {
+            <li class="empty-state compact">
+              <mat-icon>quiz</mat-icon>
+              <h3>No questions yet</h3>
+              <p>Add the first question using the form below.</p>
+            </li>
+          }
+        }
+      </ol>
+    }
+  </section>
+
+  <section
+    #formSection
+    class="new-question-section"
+    [class.editing]="editingId()"
+    aria-labelledby="new-question-heading"
+  >
+    <h3 id="new-question-heading">{{ editingId() ? 'Edit question' : 'Add a question' }}</h3>
+
+    <mat-button-toggle-group
+      class="type-toggle"
+      [value]="type"
+      (change)="setQuestionType($event.value)"
+      aria-label="Question type"
+      hideSingleSelectionIndicator
+    >
+      <mat-button-toggle value="mcq"><mat-icon>list</mat-icon> Multiple choice</mat-button-toggle>
+      <mat-button-toggle value="input"><mat-icon>short_text</mat-icon> Input</mat-button-toggle>
+    </mat-button-toggle-group>
+
+    <form [formGroup]="form" (ngSubmit)="submitQuestion()">
+      <mat-form-field class="full-width">
+        <mat-label>Question</mat-label>
+        <textarea matInput formControlName="question_text" rows="2" required></textarea>
+        <mat-error>Question text is required.</mat-error>
+      </mat-form-field>
+
+      @if (type === 'mcq') {
+        <fieldset class="options-section">
+          <legend>Options <span class="hint">— select the correct one</span></legend>
+
+          <mat-radio-group
+            formControlName="correctIndex"
+            aria-label="Correct option"
+            formArrayName="options"
+            class="option-rows"
           >
-            Remove
+            @for (option of options.controls; track option; let i = $index) {
+              <div class="option-row" [formGroupName]="i">
+                <mat-radio-button
+                  [value]="i"
+                  [attr.aria-label]="'Mark option ' + (i + 1) + ' as correct'"
+                />
+                <mat-form-field class="option-field" subscriptSizing="dynamic">
+                  <mat-label>Option {{ i + 1 }}</mat-label>
+                  <input matInput formControlName="text" required />
+                  <mat-error>Option text is required.</mat-error>
+                </mat-form-field>
+                <button
+                  mat-icon-button
+                  type="button"
+                  (click)="removeOption(i)"
+                  [disabled]="options.length <= 2"
+                  matTooltip="Remove option"
+                  [attr.aria-label]="'Remove option ' + (i + 1)"
+                >
+                  <mat-icon>close</mat-icon>
+                </button>
+              </div>
+            }
+          </mat-radio-group>
+
+          @if (showError('correctOptionRequired')) {
+            <p class="form-error" role="alert">Select the correct option.</p>
+          }
+          <button mat-button type="button" (click)="addOption()">
+            <mat-icon>add</mat-icon>
+            Add option
           </button>
-        </div>
-        <button type="button" class="btn btn-secondary btn-sm" (click)="addOption()">+ Add Option</button>
-      </div>
-
-      <!-- Input Type Correct Answer -->
-      <div *ngIf="questionType === 'input'" class="form-group">
-        <label for="correct-answer">Correct Answer *</label>
-        <input
-          id="correct-answer"
-          type="text"
-          formControlName="correct_answer"
-          placeholder="Enter the correct answer"
-          class="form-control"
-        />
-      </div>
-
-      <!-- MCQ Correct Answer -->
-      <div *ngIf="questionType === 'mcq'" class="form-group">
-        <label for="correct-answer">Correct Answer Option *</label>
-        <input
-          id="correct-answer"
-          type="text"
-          formControlName="correct_answer"
-          placeholder="Enter the text of the correct option"
-          class="form-control"
-        />
-      </div>
+        </fieldset>
+      } @else {
+        <mat-form-field class="full-width">
+          <mat-label>Correct answer</mat-label>
+          <input matInput formControlName="correct_answer" required />
+          <mat-hint>Used when grading the candidate's typed answer.</mat-hint>
+        </mat-form-field>
+        @if (showError('correctAnswerRequired')) {
+          <p class="form-error" role="alert">Correct answer is required.</p>
+        }
+      }
 
       <div class="form-actions">
-        <button type="submit" class="btn btn-primary" [disabled]="questionForm.invalid">Add Question</button>
-        <button type="button" class="btn btn-secondary" (click)="resetForm()">Reset</button>
+        <button mat-button type="button" (click)="resetForm()">
+          {{ editingId() ? 'Cancel edit' : 'Reset' }}
+        </button>
+        <button mat-flat-button type="submit" [disabled]="form.invalid || saving()">
+          @if (saving()) {
+            <mat-spinner diameter="18" />
+          }
+          {{ editingId() ? 'Save Changes' : 'Add Question' }}
+        </button>
       </div>
     </form>
-  </div>
+  </section>
 </div>
