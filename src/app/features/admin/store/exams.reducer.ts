@@ -150,7 +150,12 @@ const adminExamsReducer = createReducer(
     ...state,
     results: fetching(state.results),
   })),
-  on(A.submitGrading, (state) => ({ ...state, results: saving(state.results) })),
+  on(A.submitGrading, A.saveReview, (state) => ({ ...state, results: saving(state.results) })),
+  on(A.loadResult, (state) => ({ ...state, results: fetching(state.results) })),
+  on(A.loadResultSuccess, A.saveReviewSuccess, (state, { result }) => ({
+    ...state,
+    results: resultsAdapter.upsertOne(result, done(state.results)),
+  })),
   on(A.loadResultsForExamSuccess, (state, { results }) => ({
     ...state,
     results: resultsAdapter.setAll(results, done(state.results)),
@@ -159,10 +164,16 @@ const adminExamsReducer = createReducer(
     ...state,
     results: resultsAdapter.upsertOne(result, done(state.results)),
   })),
-  on(A.loadResultsForExamFailure, A.submitGradingFailure, (state, { error }) => ({
-    ...state,
-    results: failed(state.results, error),
-  })),
+  on(
+    A.loadResultsForExamFailure,
+    A.submitGradingFailure,
+    A.loadResultFailure,
+    A.saveReviewFailure,
+    (state, { error }) => ({
+      ...state,
+      results: failed(state.results, error),
+    }),
+  ),
 );
 
 export const adminExamsFeature = createFeature({

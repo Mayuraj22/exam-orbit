@@ -5,6 +5,8 @@ const tseslint = require('typescript-eslint');
 const angular = require('angular-eslint');
 
 module.exports = defineConfig([
+  // Deno Edge Functions are not part of the Angular app.
+  { ignores: ["supabase/functions/**"] },
   {
     files: ['**/*.ts'],
     extends: [

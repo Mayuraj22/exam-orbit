@@ -86,3 +86,15 @@ export function passOutcome(percent: number | null, passMark: number | null): Pa
   if (passMark === null || passMark === undefined || percent === null) return null;
   return percent >= passMark ? 'pass' : 'fail';
 }
+
+export type ResultOutcome = PassOutcome | 'disqualified';
+
+/** Pass/Fail, except that a proctoring "Disqualified" decision always wins. */
+export function resultOutcome(
+  percent: number | null,
+  passMark: number | null,
+  reviewStatus: string | null,
+): ResultOutcome | null {
+  if (reviewStatus === 'disqualified') return 'disqualified';
+  return passOutcome(percent, passMark);
+}

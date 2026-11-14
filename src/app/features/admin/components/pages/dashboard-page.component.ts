@@ -17,6 +17,7 @@ import {
   selectResultsLoading,
 } from '../../store/exams.selectors';
 import { ExamActionsService } from '../../exam-actions.service';
+import { needsProctoringReview } from '../../../../shared/models/result.model';
 
 const LIST_SIZE = 5;
 
@@ -77,6 +78,14 @@ export class DashboardPageComponent implements OnInit {
         query: { status: 'needs-grading' },
         attention: true,
       },
+      {
+        label: 'Needs review',
+        value: results.filter(needsProctoringReview).length,
+        icon: 'flag',
+        link: '/admin/results',
+        query: { status: 'needs-review' },
+        attention: true,
+      },
     ];
   });
 
@@ -95,6 +104,11 @@ export class DashboardPageComponent implements OnInit {
     this.describe()
       .filter((r) => !r.is_fully_graded)
       .slice(0, LIST_SIZE),
+  );
+
+  /** Flagged by proctoring and waiting for a decision. */
+  protected readonly needsReview = computed(() =>
+    this.describe().filter(needsProctoringReview).slice(0, LIST_SIZE),
   );
 
   /** Results arrive sorted newest first from the adapter. */

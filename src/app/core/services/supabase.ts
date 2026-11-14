@@ -5,7 +5,8 @@ import { environment } from '../../../environments/environment';
 import { DEFAULT_EXAM_SETTINGS, Exam, NewExam } from '../../shared/models/exam.model';
 import { Question } from '../../shared/models/question.model';
 import { Candidate, NewCandidate } from '../../shared/models/candidate.model';
-import { DEFAULT_RESULT_FIELDS, Result } from '../../shared/models/result.model';
+import { DEFAULT_RESULT_FIELDS, Result, ReviewStatus } from '../../shared/models/result.model';
+import { ProctoringEvent } from '../../shared/models/proctoring-event.model';
 
 type ExamInput = Omit<Exam, 'id' | 'created_at'>;
 type QuestionInput = Omit<Question, 'id'>;
@@ -229,6 +230,54 @@ export class SupabaseService {
     return this.run<Result[]>(this.supabase.from('results').select('*').eq('exam_id', examId)).pipe(
       map((rows) => rows.map(normalizeResult)),
     );
+  }
+
+  getResultById(id: string): Observable<Result> {
+    return this.run<Result>(this.supabase.from('results').select('*').eq('id', id).single()).pipe(
+      map(normalizeResult),
+    );
+  }
+
+  /** The admin's proctoring decision. Reviewer and time are recorded by the database. */
+  updateResultReview(
+    id: string,
+    review_status: ReviewStatus | null,
+    review_note: string | null,
+  ): Observable<Result> {
+    return this.run<Result>(
+      this.supabase
+        .from('results')
+        .update({ review_status, review_note })
+        .eq('id', id)
+        .select()
+        .single(),
+    ).pipe(map(normalizeResult));
+  }
+
+  /** Every proctoring event of one attempt, oldest first. */
+  async getProctoringEvents(result: Result): Promise<ProctoringEvent[]> {
+    return this.unwrap<ProctoringEvent[]>(
+      this.supabase
+        .from('proctoring_events')
+        .select('*')
+        .eq('candidate_id', result.candidate_id)
+        .eq('attempt_number', result.attempt_number)
+        .order('occurred_at', { ascending: true }),
+    );
+  }
+
+  /** Short-lived (1 hour) links to view private snapshots. Path to URL. */
+  async signSnapshotUrls(paths: string[]): Promise<Record<string, string>> {
+    if (!paths.length) return {};
+    const { data, error } = await this.supabase.storage
+      .from('proctoring-snapshots')
+      .createSignedUrls(paths, 3600);
+    if (error) throw error;
+    const urls: Record<string, string> = {};
+    for (const item of data ?? []) {
+      if (item.path && item.signedUrl) urls[item.path] = item.signedUrl;
+    }
+    return urls;
   }
 
   /** Every result across all exams, newest first (sidebar Results page). */

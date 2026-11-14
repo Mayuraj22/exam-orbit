@@ -68,7 +68,12 @@ export class ShellComponent {
       route: '/admin/candidates',
       activeFor: ['/admin/candidates'],
     },
-    { label: 'Results', icon: 'insights', route: '/admin/results', activeFor: ['/admin/results'] },
+    {
+      label: 'Results',
+      icon: 'insights',
+      route: '/admin/results',
+      activeFor: ['/admin/results', '/admin/results/'],
+    },
   ];
 
   /** Current path without query/fragment, updated on every navigation. */

@@ -1,19 +1,9 @@
-<h2 mat-dialog-title>
-  Grade: {{ data.candidateName }}
-  <span class="subtitle">{{ data.examTitle }}</span>
-</h2>
-
-<mat-dialog-content>
+<div class="answers-panel">
   @if (result(); as result) {
     <div class="summary">
       <div class="score-box">
         <span class="score">{{ score() }} / {{ answers().length }}</span>
         <span class="percent">{{ percent() }}%</span>
-        @if (outcome(); as o) {
-          <span class="status-chip" [class.published]="o === 'pass'" [class.failed]="o === 'fail'">
-            {{ o === 'pass' ? 'Pass' : 'Fail' }} (pass mark {{ passMark() }}%)
-          </span>
-        }
       </div>
       <div class="summary-meta">
         <span
@@ -102,10 +92,12 @@
   } @else {
     <p>This result could not be found. It may have been removed.</p>
   }
-</mat-dialog-content>
+</div>
 
-<mat-dialog-actions align="end">
-  <button mat-button type="button" mat-dialog-close>Cancel</button>
+<div class="actions">
+  @if (dirty()) {
+    <span class="unsaved">Unsaved changes</span>
+  }
   <button
     mat-flat-button
     type="button"
@@ -117,4 +109,4 @@
     }
     {{ pending() ? 'Save progress' : 'Save grading' }}
   </button>
-</mat-dialog-actions>
+</div>

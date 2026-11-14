@@ -1,7 +1,7 @@
 import { createActionGroup, emptyProps, props } from '@ngrx/store';
 import { Exam, NewExam } from '../../../shared/models/exam.model';
 import { Question } from '../../../shared/models/question.model';
-import { Result } from '../../../shared/models/result.model';
+import { Result, ReviewStatus } from '../../../shared/models/result.model';
 import { Candidate, NewCandidate } from '../../../shared/models/candidate.model';
 
 export const AdminExamsActions = createActionGroup({
@@ -84,6 +84,15 @@ export const AdminExamsActions = createActionGroup({
     'Reset Candidate Passcode Failure': props<{ error: string }>(),
 
     'Load All Results': emptyProps(),
+
+    /** One result by id (review page opened directly). */
+    'Load Result': props<{ id: string }>(),
+    'Load Result Success': props<{ result: Result }>(),
+    'Load Result Failure': props<{ error: string }>(),
+
+    'Save Review': props<{ id: string; status: ReviewStatus | null; note: string | null }>(),
+    'Save Review Success': props<{ result: Result }>(),
+    'Save Review Failure': props<{ error: string }>(),
 
     'Load Results For Exam': props<{ examId: string }>(),
     'Load Results For Exam Success': props<{ results: Result[] }>(),

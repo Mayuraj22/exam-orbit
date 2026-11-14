@@ -285,6 +285,34 @@ export const loadAllResults$ = createEffect(
   { functional: true },
 );
 
+export const loadResult$ = createEffect(
+  (actions$ = inject(Actions), api = inject(SupabaseService)) =>
+    actions$.pipe(
+      ofType(A.loadResult),
+      switchMap(({ id }) =>
+        api.getResultById(id).pipe(
+          map((result) => A.loadResultSuccess({ result })),
+          catchError((e) => of(A.loadResultFailure({ error: toMessage(e) }))),
+        ),
+      ),
+    ),
+  { functional: true },
+);
+
+export const saveReview$ = createEffect(
+  (actions$ = inject(Actions), api = inject(SupabaseService)) =>
+    actions$.pipe(
+      ofType(A.saveReview),
+      concatMap(({ id, status, note }) =>
+        api.updateResultReview(id, status, note).pipe(
+          map((result) => A.saveReviewSuccess({ result })),
+          catchError((e) => of(A.saveReviewFailure({ error: toMessage(e) }))),
+        ),
+      ),
+    ),
+  { functional: true },
+);
+
 export const loadResultsForExam$ = createEffect(
   (actions$ = inject(Actions), api = inject(SupabaseService)) =>
     actions$.pipe(
@@ -333,5 +361,7 @@ export const adminExamsEffects = {
   resetCandidatePasscode$,
   loadAllResults$,
   loadResultsForExam$,
+  loadResult$,
+  saveReview$,
   submitGrading$,
 };

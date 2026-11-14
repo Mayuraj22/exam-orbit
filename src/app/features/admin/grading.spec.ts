@@ -1,4 +1,11 @@
-import { correctOption, gradeResult, normalizeAnswer, passOutcome, scoreOf } from './grading';
+import {
+  correctOption,
+  gradeResult,
+  normalizeAnswer,
+  passOutcome,
+  resultOutcome,
+  scoreOf,
+} from './grading';
 import { Question } from '../../shared/models/question.model';
 import { DEFAULT_RESULT_FIELDS, Result } from '../../shared/models/result.model';
 
@@ -117,5 +124,18 @@ describe('grading', () => {
   it('computes score percentages', () => {
     expect(scoreOf(3, 4)).toEqual({ score: 3, total: 4, percent: 75 });
     expect(scoreOf(null, 0)).toEqual({ score: 0, total: 0, percent: null });
+  });
+});
+
+describe('resultOutcome', () => {
+  it('shows Disqualified whatever the score', () => {
+    expect(resultOutcome(100, 60, 'disqualified')).toBe('disqualified');
+    expect(resultOutcome(null, null, 'disqualified')).toBe('disqualified');
+  });
+
+  it('falls back to pass/fail otherwise', () => {
+    expect(resultOutcome(70, 60, 'cleared')).toBe('pass');
+    expect(resultOutcome(50, 60, null)).toBe('fail');
+    expect(resultOutcome(50, null, 'suspicious')).toBeNull();
   });
 });

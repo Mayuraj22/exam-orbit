@@ -175,3 +175,24 @@ mat-spinner {
   margin-right: 8px;
   vertical-align: middle;
 }
+
+.answers-panel {
+  padding: 16px;
+}
+
+.actions {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--mat-sys-outline-variant);
+  background: var(--mat-sys-surface);
+}
+
+.unsaved {
+  font: var(--mat-sys-body-medium);
+  color: var(--app-warning-fg);
+}

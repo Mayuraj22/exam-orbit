@@ -40,6 +40,47 @@
   <div class="panels">
     <mat-card appearance="outlined" class="panel">
       <mat-card-header>
+        <mat-card-title>Needs proctoring review</mat-card-title>
+        <mat-card-subtitle>Submissions with webcam warnings, not yet decided</mat-card-subtitle>
+      </mat-card-header>
+      <mat-card-content>
+        @if (needsReview().length) {
+          <mat-nav-list>
+            @for (r of needsReview(); track r.id) {
+              <a
+                mat-list-item
+                [routerLink]="['/admin/results', r.id]"
+                [queryParams]="{ tab: 'proctoring' }"
+              >
+                <mat-icon matListItemIcon>{{
+                  r.terminated_by_proctoring ? 'gpp_bad' : 'flag'
+                }}</mat-icon>
+                <span matListItemTitle>{{ r.candidateName }}</span>
+                <span matListItemLine
+                  >{{ r.examTitle }} ·
+                  {{
+                    r.terminated_by_proctoring
+                      ? 'ended by proctoring'
+                      : r.violation_count + ' warning' + (r.violation_count === 1 ? '' : 's')
+                  }}</span
+                >
+              </a>
+            }
+          </mat-nav-list>
+          <a mat-button routerLink="/admin/results" [queryParams]="{ status: 'needs-review' }"
+            >View all</a
+          >
+        } @else {
+          <div class="empty-state compact">
+            <mat-icon>verified_user</mat-icon>
+            <p>No flagged submissions waiting.</p>
+          </div>
+        }
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card appearance="outlined" class="panel">
+      <mat-card-header>
         <mat-card-title>Needs grading</mat-card-title>
         <mat-card-subtitle>Submissions with Input answers still to mark</mat-card-subtitle>
       </mat-card-header>

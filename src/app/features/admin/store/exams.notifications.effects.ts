@@ -22,6 +22,7 @@ const successMessages = [
   [A.updateQuestionSuccess, 'Question updated'],
   [A.deleteQuestionSuccess, 'Question deleted'],
   [A.submitGradingSuccess, 'Grading saved'],
+  [A.saveReviewSuccess, 'Review decision saved'],
   [A.deleteCandidateSuccess, 'Candidate removed'],
   [A.resetCandidateAttemptSuccess, 'Attempt reset: the candidate can take the exam again'],
 ] as const;
@@ -38,6 +39,7 @@ const failureMessages = [
   [A.updateQuestionFailure, "Couldn't update the question"],
   [A.deleteQuestionFailure, "Couldn't delete the question"],
   [A.submitGradingFailure, "Couldn't save grading"],
+  [A.saveReviewFailure, "Couldn't save the review decision"],
   [A.createCandidatesFailure, "Couldn't add candidates"],
   [A.deleteCandidateFailure, "Couldn't remove the candidate"],
   [A.resetCandidateAttemptFailure, "Couldn't reset the attempt"],

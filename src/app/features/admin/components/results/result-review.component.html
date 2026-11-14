@@ -1,0 +1,382 @@
+@if (saving()) {
+  <mat-progress-bar class="saving-bar" mode="indeterminate" aria-label="Saving" />
+}
+
+<div class="page">
+  <nav class="breadcrumbs" aria-label="Breadcrumb">
+    <a routerLink="/admin/results">Results</a>
+    <mat-icon aria-hidden="true">chevron_right</mat-icon>
+    <span aria-current="page">{{ candidate()?.name ?? 'Submission' }}</span>
+  </nav>
+
+  @if (result(); as r) {
+    <header class="head">
+      <div class="who">
+        <h1>{{ candidate()?.name ?? 'Candidate' }}</h1>
+        <p class="meta">
+          @if (candidate(); as c) {
+            <span class="mono">{{ c.username }}</span> ·
+          }
+          @if (exam(); as e) {
+            <a [routerLink]="['/admin/exams', e.id]" [queryParams]="{ tab: 'results' }">{{
+              e.title
+            }}</a>
+            ·
+          }
+          Attempt {{ r.attempt_number }} · Submitted {{ r.submitted_at | date: 'medium' }}
+        </p>
+      </div>
+
+      <div class="score">
+        <span class="score-value">
+          {{ r.score ?? '—' }}
+          @if (questionTotal()) {
+            / {{ questionTotal() }}
+          }
+        </span>
+        @if (percent() !== null) {
+          <span class="score-percent">{{ percent() }}%</span>
+        }
+        <div class="chips">
+          @switch (outcome()) {
+            @case ('pass') {
+              <span class="status-chip published">Pass</span>
+            }
+            @case ('fail') {
+              <span class="status-chip failed">Fail</span>
+            }
+            @case ('disqualified') {
+              <span class="status-chip failed">Disqualified</span>
+            }
+          }
+          <span
+            class="status-chip"
+            [class.published]="r.is_fully_graded"
+            [class.draft]="!r.is_fully_graded"
+          >
+            {{ r.is_fully_graded ? 'Graded' : 'Needs grading' }}
+          </span>
+          @if (r.terminated_by_proctoring) {
+            <span class="status-chip failed"
+              ><mat-icon inline aria-hidden="true">flag</mat-icon> Ended by proctoring</span
+            >
+          } @else if (r.violation_count > 0) {
+            <span class="status-chip draft"
+              ><mat-icon inline aria-hidden="true">flag</mat-icon> {{ r.violation_count }} warning{{
+                r.violation_count === 1 ? '' : 's'
+              }}</span
+            >
+          }
+        </div>
+      </div>
+    </header>
+
+    <mat-card appearance="outlined" class="tabs-card">
+      <mat-tab-group
+        [selectedIndex]="selectedTab()"
+        (selectedIndexChange)="onTabChange($event)"
+        animationDuration="150ms"
+      >
+        <mat-tab>
+          <ng-template mat-tab-label>
+            <mat-icon class="tab-icon">checklist</mat-icon>
+            Answers
+          </ng-template>
+          <ng-template matTabContent>
+            <app-result-answers [resultId]="r.id" [examId]="r.exam_id" />
+          </ng-template>
+        </mat-tab>
+
+        <mat-tab>
+          <ng-template mat-tab-label>
+            <mat-icon class="tab-icon">videocam</mat-icon>
+            Proctoring
+            @if (flagged() && !r.review_status) {
+              <span class="tab-badge" aria-label="needs review">!</span>
+            }
+          </ng-template>
+          <ng-template matTabContent>
+            <div class="proctoring">
+              @if (eventsLoading()) {
+                <mat-progress-bar mode="indeterminate" aria-label="Loading proctoring record" />
+              }
+              @if (eventsError(); as message) {
+                <div class="error-banner" role="alert">
+                  <mat-icon>error_outline</mat-icon>
+                  <span>{{ message }}</span>
+                  <span class="spacer"></span>
+                  <button mat-button type="button" (click)="loadEvents()">Retry</button>
+                </div>
+              }
+
+              @if (!eventsLoading() && !events().length && !eventsError()) {
+                <div class="empty-state">
+                  <mat-icon>videocam_off</mat-icon>
+                  <h3>No proctoring record</h3>
+                  <p>This exam didn't require a webcam, or the submission predates proctoring.</p>
+                </div>
+              } @else {
+                <div class="columns">
+                  <!-- Summary + decision -->
+                  <section class="side">
+                    <div class="panel">
+                      <h2>Summary</h2>
+                      <p class="big">
+                        {{ summary().violations }} warning{{
+                          summary().violations === 1 ? '' : 's'
+                        }}
+                      </p>
+                      @if (summary().byType.length) {
+                        <ul class="by-type">
+                          @for (t of summary().byType; track t.type) {
+                            <li>
+                              <span>{{ t.label }}</span
+                              ><strong>{{ t.count }}×</strong>
+                            </li>
+                          }
+                        </ul>
+                      } @else {
+                        <p class="muted">No rule breaks recorded.</p>
+                      }
+                      @if (summary().autoSubmitted) {
+                        <p class="auto">
+                          <mat-icon inline aria-hidden="true">gpp_bad</mat-icon> The exam was
+                          auto-submitted.
+                        </p>
+                      }
+                      <p class="muted">
+                        {{ summary().snapshots }} photo{{ summary().snapshots === 1 ? '' : 's' }}
+                        kept
+                      </p>
+                    </div>
+
+                    <div class="panel">
+                      <h2>Your decision</h2>
+                      <mat-button-toggle-group
+                        class="decision"
+                        [value]="decision()"
+                        (change)="decision.set($event.value)"
+                        aria-label="Review decision"
+                        hideSingleSelectionIndicator
+                      >
+                        <mat-button-toggle value="cleared" class="d-cleared">
+                          <mat-icon>verified</mat-icon> Cleared
+                        </mat-button-toggle>
+                        <mat-button-toggle value="suspicious" class="d-suspicious">
+                          <mat-icon>help</mat-icon> Suspicious
+                        </mat-button-toggle>
+                        <mat-button-toggle value="disqualified" class="d-disqualified">
+                          <mat-icon>block</mat-icon> Disqualified
+                        </mat-button-toggle>
+                      </mat-button-toggle-group>
+                      <p class="muted hint">
+                        @switch (decision()) {
+                          @case ('cleared') {
+                            No cheating found. The flag is removed from lists.
+                          }
+                          @case ('suspicious') {
+                            Kept as flagged for a closer look.
+                          }
+                          @case ('disqualified') {
+                            Shown as Disqualified instead of Pass/Fail. The score is kept, so you
+                            can change this later.
+                          }
+                          @default {
+                            Not reviewed yet.
+                          }
+                        }
+                      </p>
+
+                      <mat-form-field class="full-width" subscriptSizing="dynamic">
+                        <mat-label>Note (optional)</mat-label>
+                        <textarea
+                          matInput
+                          rows="3"
+                          maxlength="1000"
+                          [value]="note()"
+                          (input)="note.set($any($event.target).value)"
+                          placeholder="e.g. Second person visible at 10:21"
+                        ></textarea>
+                      </mat-form-field>
+
+                      <div class="decision-actions">
+                        @if (decision()) {
+                          <button mat-button type="button" (click)="clearDecision()">Clear</button>
+                        }
+                        <button
+                          mat-flat-button
+                          type="button"
+                          [disabled]="!decisionDirty() || saving()"
+                          (click)="saveDecision()"
+                        >
+                          Save decision
+                        </button>
+                      </div>
+                      @if (r.reviewed_at) {
+                        <p class="muted reviewed">
+                          Last saved {{ r.reviewed_at | date: 'medium' }}
+                        </p>
+                      }
+                    </div>
+                  </section>
+
+                  <!-- Timeline -->
+                  <section class="panel timeline-panel">
+                    <h2>Timeline</h2>
+                    <ol class="timeline">
+                      @for (t of timeline(); track t.event.id) {
+                        <li
+                          [class.violation]="t.violation"
+                          [class.ended]="t.event.event_type === 'auto_submitted'"
+                        >
+                          <mat-icon class="t-icon" aria-hidden="true">{{ t.icon }}</mat-icon>
+                          <div class="t-body">
+                            <span class="t-label">
+                              {{ t.label }}
+                              @if (t.event.warning_number) {
+                                <span class="t-warning">warning {{ t.event.warning_number }}</span>
+                              }
+                            </span>
+                            <span class="t-time">
+                              {{ t.event.occurred_at | date: 'mediumTime' }} · {{ t.elapsed }} in
+                            </span>
+                          </div>
+                          @if (t.event.snapshot_path) {
+                            <button
+                              mat-icon-button
+                              type="button"
+                              (click)="openPhoto(t)"
+                              [attr.aria-label]="'View photo: ' + t.label"
+                            >
+                              <mat-icon>image</mat-icon>
+                            </button>
+                          } @else if (t.snapshotDeleted) {
+                            <span class="t-deleted" title="Photos are deleted after 30 days"
+                              >Photo deleted</span
+                            >
+                          }
+                        </li>
+                      }
+                    </ol>
+                  </section>
+                </div>
+
+                @if (identityPair(); as pair) {
+                  <section class="panel">
+                    <h2>Identity check</h2>
+                    <p class="muted">
+                      The first and latest photo. Make sure it's the same person throughout.
+                    </p>
+                    <div class="pair">
+                      @for (p of pair; track p.entry.event.id; let first = $first) {
+                        <figure>
+                          <button
+                            type="button"
+                            class="pair-photo"
+                            (click)="openPhoto(p.entry)"
+                            [attr.aria-label]="'Enlarge ' + (first ? 'first' : 'latest') + ' photo'"
+                          >
+                            <img [src]="p.url" [alt]="(first ? 'First' : 'Latest') + ' photo'" />
+                          </button>
+                          <figcaption>
+                            {{ first ? 'First' : 'Latest' }} · {{ p.entry.elapsed }} in
+                          </figcaption>
+                        </figure>
+                      }
+                    </div>
+                  </section>
+                }
+
+                @if (photos().length) {
+                  <section class="panel">
+                    <h2>Photos ({{ photos().length }})</h2>
+                    <div class="gallery">
+                      @for (p of photos(); track p.entry.event.id) {
+                        <button
+                          type="button"
+                          class="thumb"
+                          [class.violation]="p.entry.violation"
+                          [disabled]="!p.url"
+                          (click)="openPhoto(p.entry)"
+                          [attr.aria-label]="p.entry.label + ', ' + p.entry.elapsed + ' in'"
+                        >
+                          @if (p.url) {
+                            <img [src]="p.url" alt="" loading="lazy" />
+                          } @else {
+                            <span class="thumb-missing">
+                              <mat-icon aria-hidden="true">hide_image</mat-icon>
+                              {{ p.entry.snapshotDeleted ? 'Deleted' : 'Unavailable' }}
+                            </span>
+                          }
+                          <span class="thumb-caption"
+                            >{{ p.entry.label }} · {{ p.entry.elapsed }}</span
+                          >
+                        </button>
+                      }
+                    </div>
+                  </section>
+                }
+              }
+            </div>
+          </ng-template>
+        </mat-tab>
+      </mat-tab-group>
+    </mat-card>
+  } @else if (storeError(); as message) {
+    <div class="error-banner" role="alert">
+      <mat-icon>error_outline</mat-icon>
+      <span>{{ message }}</span>
+    </div>
+  } @else {
+    <div class="empty-state" aria-busy="true">
+      <mat-spinner diameter="36" />
+      <p>Loading submission…</p>
+    </div>
+  }
+</div>
+
+@if (viewingPhoto(); as p) {
+  <div class="lightbox" role="dialog" aria-modal="true" [attr.aria-label]="p.entry.label">
+    <button
+      type="button"
+      class="lightbox-backdrop"
+      aria-label="Close photo"
+      (click)="viewing.set(null)"
+    ></button>
+    <figure>
+      @if (p.url) {
+        <img [src]="p.url" [alt]="p.entry.label" />
+      }
+      <figcaption>
+        <strong>{{ p.entry.label }}</strong>
+        @if (p.entry.event.warning_number) {
+          · warning {{ p.entry.event.warning_number }}
+        }
+        · {{ p.entry.event.occurred_at | date: 'medium' }} ({{ p.entry.elapsed }} in)
+      </figcaption>
+      <div class="lightbox-actions">
+        <button
+          mat-icon-button
+          type="button"
+          (click)="step(-1)"
+          [disabled]="viewing() === 0"
+          aria-label="Previous photo"
+        >
+          <mat-icon>chevron_left</mat-icon>
+        </button>
+        <span>{{ (viewing() ?? 0) + 1 }} / {{ photos().length }}</span>
+        <button
+          mat-icon-button
+          type="button"
+          (click)="step(1)"
+          [disabled]="viewing() === photos().length - 1"
+          aria-label="Next photo"
+        >
+          <mat-icon>chevron_right</mat-icon>
+        </button>
+        <span class="spacer"></span>
+        <button mat-button type="button" (click)="viewing.set(null)">Close</button>
+      </div>
+    </figure>
+  </div>
+}

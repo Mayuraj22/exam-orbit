@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 import { MatCardModule } from '@angular/material/card';
 import { ResultsTableComponent } from '../results/results-table.component';
 
@@ -15,9 +15,7 @@ import { ResultsTableComponent } from '../results/results-table.component';
         </div>
       </header>
       <mat-card appearance="outlined">
-        <app-results-table
-          [initialStatus]="status() === 'needs-grading' ? 'needs-grading' : 'all'"
-        />
+        <app-results-table [initialStatus]="initialStatus()" />
       </mat-card>
     </div>
   `,
@@ -26,4 +24,9 @@ import { ResultsTableComponent } from '../results/results-table.component';
 export class ResultsPageComponent {
   /** ?status= query param. */
   readonly status = input<string>();
+
+  protected readonly initialStatus = computed(() => {
+    const s = this.status();
+    return s === 'needs-grading' || s === 'needs-review' || s === 'graded' ? s : 'all';
+  });
 }

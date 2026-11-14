@@ -49,6 +49,14 @@ export const ADMIN_ROUTES: Routes = [
         title: 'Candidates · ExamOrbit',
       },
       {
+        path: 'results/:id',
+        loadComponent: () =>
+          import('./components/results/result-review.component').then(
+            (m) => m.ResultReviewComponent,
+          ),
+        title: 'Review submission · ExamOrbit',
+      },
+      {
         path: 'results',
         loadComponent: () =>
           import('./components/pages/results-page.component').then((m) => m.ResultsPageComponent),

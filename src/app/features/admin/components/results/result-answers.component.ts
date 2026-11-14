@@ -4,69 +4,59 @@ import {
   computed,
   effect,
   inject,
+  input,
   signal,
 } from '@angular/core';
 import { DatePipe } from '@angular/common';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { Actions, ofType } from '@ngrx/effects';
 import { Store } from '@ngrx/store';
 import { AdminExamsActions } from '../../store/exams.actions';
 import {
-  selectExamDictionary,
   selectQuestions,
   selectQuestionsLoading,
   selectResultDictionary,
   selectResultsSaving,
 } from '../../store/exams.selectors';
-import { gradeResult, passOutcome } from '../../grading';
-
-export interface GradingDialogData {
-  resultId: string;
-  examId: string;
-  candidateName: string;
-  examTitle: string;
-}
+import { gradeResult } from '../../grading';
 
 /**
- * Review one submission: MCQ answers are marked automatically, Input answers
- * get ✓/✗ from the admin (exact matches are pre-marked as a suggestion).
- * Saving stores every mark plus the new score.
+ * The answers of one submission, for grading: MCQ answers are marked
+ * automatically, Input answers get correct/wrong from the admin (exact matches
+ * are pre-marked as a suggestion). Saving stores every mark plus the new score.
+ * Used on the result review page.
  */
 @Component({
-  selector: 'app-grading-dialog',
+  selector: 'app-result-answers',
   imports: [
     DatePipe,
-    MatDialogModule,
     MatButtonModule,
     MatButtonToggleModule,
     MatIconModule,
     MatProgressBarModule,
     MatProgressSpinnerModule,
   ],
-  templateUrl: './grading-dialog.component.html',
-  styleUrl: './grading-dialog.component.scss',
+  templateUrl: './result-answers.component.html',
+  styleUrl: './result-answers.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class GradingDialogComponent {
-  protected readonly data = inject<GradingDialogData>(MAT_DIALOG_DATA);
-  private readonly dialogRef = inject(MatDialogRef<GradingDialogComponent>);
+export class ResultAnswersComponent {
+  readonly resultId = input.required<string>();
+  readonly examId = input.required<string>();
   private readonly store = inject(Store);
 
   private readonly allQuestions = this.store.selectSignal(selectQuestions);
   protected readonly questionsLoading = this.store.selectSignal(selectQuestionsLoading);
   protected readonly saving = this.store.selectSignal(selectResultsSaving);
   private readonly resultDict = this.store.selectSignal(selectResultDictionary);
-  protected readonly result = computed(() => this.resultDict()[this.data.resultId] ?? null);
+  protected readonly result = computed(() => this.resultDict()[this.resultId()] ?? null);
   private questionsRequested = false;
 
   private readonly questions = computed(() =>
-    this.allQuestions().filter((q) => q.exam_id === this.data.examId),
+    this.allQuestions().filter((q) => q.exam_id === this.examId()),
   );
 
   /** Admin's changes in this dialog (question id → mark), on top of the computed marks. */
@@ -89,14 +79,6 @@ export class GradingDialogComponent {
   protected readonly pending = computed(
     () => this.answers().filter((a) => a.correct === null).length,
   );
-  private readonly examDict = this.store.selectSignal(selectExamDictionary);
-  protected readonly passMark = computed(
-    () => this.examDict()[this.data.examId]?.pass_mark ?? null,
-  );
-  protected readonly outcome = computed(() =>
-    this.answers().length ? passOutcome(this.percent(), this.passMark()) : null,
-  );
-
   protected readonly percent = computed(() =>
     this.answers().length ? Math.round((this.score() / this.answers().length) * 100) : 0,
   );
@@ -107,18 +89,17 @@ export class GradingDialogComponent {
     effect(() => {
       if (!this.questionsRequested && !this.questionsLoading() && this.questions().length === 0) {
         this.questionsRequested = true;
-        this.store.dispatch(AdminExamsActions.loadQuestions({ examId: this.data.examId }));
+        this.store.dispatch(AdminExamsActions.loadQuestions({ examId: this.examId() }));
       }
     });
-
-    inject(Actions)
-      .pipe(ofType(AdminExamsActions.submitGradingSuccess), takeUntilDestroyed())
-      .subscribe(() => this.dialogRef.close(true));
   }
 
   protected mark(questionId: string, correct: boolean): void {
     this.overrides.update((o) => ({ ...o, [questionId]: correct }));
   }
+
+  /** Unsaved changes on this page. */
+  protected readonly dirty = computed(() => Object.keys(this.overrides()).length > 0);
 
   protected save(): void {
     const answers = this.answers();
@@ -128,11 +109,12 @@ export class GradingDialogComponent {
     }
     this.store.dispatch(
       AdminExamsActions.submitGrading({
-        resultId: this.data.resultId,
+        resultId: this.resultId(),
         gradedAnswers,
         newScore: this.score(),
         isFullyGraded: this.pending() === 0,
       }),
     );
+    this.overrides.set({});
   }
 }

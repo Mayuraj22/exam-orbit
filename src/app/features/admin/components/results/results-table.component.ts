@@ -11,7 +11,6 @@ import {
   viewChild,
 } from '@angular/core';
 import { DatePipe } from '@angular/common';
-import { MatDialog } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -34,12 +33,24 @@ import {
   selectResultsError,
   selectResultsLoading,
 } from '../../store/exams.selectors';
-import { Result } from '../../../../shared/models/result.model';
+import { needsProctoringReview, Result } from '../../../../shared/models/result.model';
 import { downloadCsv, slugify, toCsv } from '../../../../shared/utils/csv';
-import { GradingDialogComponent, GradingDialogData } from './grading-dialog.component';
-import { PassOutcome, passOutcome } from '../../grading';
+import { passOutcome, ResultOutcome, resultOutcome } from '../../grading';
+
+const OUTCOME_LABELS: Record<ResultOutcome, string> = {
+  pass: 'Pass',
+  fail: 'Fail',
+  disqualified: 'Disqualified',
+};
+const REVIEW_LABELS = {
+  cleared: 'Cleared',
+  suspicious: 'Suspicious',
+  disqualified: 'Disqualified',
+};
 
 type GradingStatus = 'graded' | 'needs-grading';
+/** List filter: grading status, or flagged and waiting for a proctoring decision. */
+type StatusFilter = 'all' | GradingStatus | 'needs-review';
 
 interface ResultRow extends Result {
   candidateName: string;
@@ -50,7 +61,8 @@ interface ResultRow extends Result {
   percent: number | null;
   status: GradingStatus;
   /** null when the exam has no pass mark (or the percentage is unknown). */
-  outcome: PassOutcome | null;
+  outcome: ResultOutcome | null;
+  needsReview: boolean;
 }
 
 /**
@@ -80,10 +92,9 @@ interface ResultRow extends Result {
 export class ResultsTableComponent implements OnInit, AfterViewInit {
   readonly examId = input<string>();
   /** Initial grading filter, e.g. from ?status=needs-grading. */
-  readonly initialStatus = input<'all' | GradingStatus>('all');
+  readonly initialStatus = input<StatusFilter>('all');
 
   private readonly store = inject(Store);
-  private readonly dialog = inject(MatDialog);
   private readonly sort = viewChild(MatSort);
   private readonly paginator = viewChild(MatPaginator);
 
@@ -98,7 +109,7 @@ export class ResultsTableComponent implements OnInit, AfterViewInit {
   protected readonly allExamsMode = computed(() => !this.examId());
   protected readonly search = signal('');
   protected readonly examFilter = signal('all');
-  protected readonly statusFilter = signal<'all' | GradingStatus>('all');
+  protected readonly statusFilter = signal<StatusFilter>('all');
 
   /** Question count per exam, from whatever questions are in the store. */
   private readonly questionCounts = computed(() => {
@@ -131,10 +142,17 @@ export class ResultsTableComponent implements OnInit, AfterViewInit {
           total,
           percent,
           status,
-          outcome: passOutcome(percent, exams[r.exam_id]?.pass_mark ?? null),
+          outcome: resultOutcome(percent, exams[r.exam_id]?.pass_mark ?? null, r.review_status),
+          needsReview: needsProctoringReview(r),
         };
       })
-      .filter((r) => statusFilter === 'all' || r.status === statusFilter);
+      .filter((r) =>
+        statusFilter === 'all'
+          ? true
+          : statusFilter === 'needs-review'
+            ? r.needsReview
+            : r.status === statusFilter,
+      );
   });
 
   /** Summary over the exam's results (ignores the status filter). */
@@ -159,7 +177,7 @@ export class ResultsTableComponent implements OnInit, AfterViewInit {
       /** % of submissions that passed; null without a pass mark. */
       passRate:
         passMark !== null && percents.length ? Math.round((passed / percents.length) * 100) : null,
-      flagged: all.filter((r) => r.terminated_by_proctoring || r.violation_count > 0).length,
+      flagged: all.filter(needsProctoringReview).length,
     };
   });
 
@@ -226,21 +244,6 @@ export class ResultsTableComponent implements OnInit, AfterViewInit {
     }
   }
 
-  protected openGrading(row: ResultRow): void {
-    this.dialog.open<GradingDialogComponent, GradingDialogData>(GradingDialogComponent, {
-      data: {
-        resultId: row.id,
-        examId: row.exam_id,
-        candidateName: row.candidateName,
-        examTitle: row.examTitle,
-      },
-      width: '760px',
-      maxWidth: '96vw',
-      maxHeight: '92vh',
-      autoFocus: 'dialog',
-    });
-  }
-
   protected exportCsv(): void {
     const csv = toCsv(this.dataSource.filteredData, [
       { header: 'Candidate', value: (r) => r.candidateName },
@@ -251,9 +254,11 @@ export class ResultsTableComponent implements OnInit, AfterViewInit {
       { header: 'Percent', value: (r) => (r.percent === null ? '' : `${r.percent}%`) },
       {
         header: 'Result',
-        value: (r) => (r.outcome === null ? '' : r.outcome === 'pass' ? 'Pass' : 'Fail'),
+        value: (r) => (r.outcome ? OUTCOME_LABELS[r.outcome] : ''),
       },
       { header: 'Attempt', value: (r) => r.attempt_number },
+      { header: 'Review', value: (r) => (r.review_status ? REVIEW_LABELS[r.review_status] : '') },
+      { header: 'Review note', value: (r) => r.review_note ?? '' },
       { header: 'Violations', value: (r) => r.violation_count },
       { header: 'Ended by proctoring', value: (r) => (r.terminated_by_proctoring ? 'Yes' : 'No') },
       { header: 'Submitted', value: (r) => new Date(r.submitted_at).toLocaleString() },
