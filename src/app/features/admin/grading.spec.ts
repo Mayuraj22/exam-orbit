@@ -1,6 +1,6 @@
-import { correctOption, gradeResult, normalizeAnswer, scoreOf } from './grading';
+import { correctOption, gradeResult, normalizeAnswer, passOutcome, scoreOf } from './grading';
 import { Question } from '../../shared/models/question.model';
-import { Result } from '../../shared/models/result.model';
+import { DEFAULT_RESULT_FIELDS, Result } from '../../shared/models/result.model';
 
 const mcq = (correct: string): Question => ({
   id: 'q1',
@@ -29,6 +29,7 @@ const result = (
   answers: Record<string, string>,
   graded: Record<string, boolean> | null = null,
 ): Result => ({
+  ...DEFAULT_RESULT_FIELDS,
   id: 'r1',
   candidate_id: 'c1',
   exam_id: 'e1',
@@ -91,6 +92,26 @@ describe('grading', () => {
 
   it('normalizes answers', () => {
     expect(normalizeAnswer('  New   York ')).toBe('new york');
+  });
+
+  describe('passOutcome', () => {
+    it('passes at or above the pass mark', () => {
+      expect(passOutcome(60, 60)).toBe('pass');
+      expect(passOutcome(100, 60)).toBe('pass');
+    });
+
+    it('fails below the pass mark', () => {
+      expect(passOutcome(59, 60)).toBe('fail');
+    });
+
+    it('has no outcome without a pass mark or a percentage', () => {
+      expect(passOutcome(80, null)).toBeNull();
+      expect(passOutcome(null, 60)).toBeNull();
+    });
+
+    it('treats a pass mark of 0 as everyone passes', () => {
+      expect(passOutcome(0, 0)).toBe('pass');
+    });
   });
 
   it('computes score percentages', () => {

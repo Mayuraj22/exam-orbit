@@ -36,6 +36,66 @@
     }
   </mat-form-field>
 
+  @if (showSettings()) {
+    <section class="settings-group" aria-labelledby="scoring-heading">
+      <h3 id="scoring-heading"><mat-icon aria-hidden="true">grading</mat-icon> Scoring</h3>
+      <mat-form-field class="pass-field">
+        <mat-label>Pass mark</mat-label>
+        <input matInput type="number" formControlName="pass_mark" min="0" max="100" />
+        <span matTextSuffix>%</span>
+        <mat-hint>Leave empty for no pass/fail.</mat-hint>
+        <mat-error>Enter a percentage from 0 to 100.</mat-error>
+      </mat-form-field>
+    </section>
+
+    <section class="settings-group" aria-labelledby="order-heading">
+      <h3 id="order-heading"><mat-icon aria-hidden="true">shuffle</mat-icon> Question order</h3>
+      <mat-slide-toggle formControlName="shuffle_questions">
+        Shuffle questions
+        <span class="toggle-hint">Each candidate sees the questions in a different order.</span>
+      </mat-slide-toggle>
+      <mat-slide-toggle formControlName="shuffle_options">
+        Shuffle answer options
+        <span class="toggle-hint">Multiple-choice options appear in a different order.</span>
+      </mat-slide-toggle>
+    </section>
+
+    <section class="settings-group" aria-labelledby="proctoring-heading">
+      <h3 id="proctoring-heading"><mat-icon aria-hidden="true">videocam</mat-icon> Proctoring</h3>
+      <mat-slide-toggle formControlName="camera_required">
+        Require webcam
+        <span class="toggle-hint">
+          Candidates keep their camera on. Snapshots are taken, and violations (no face, another
+          person, switching tabs, leaving fullscreen) trigger warnings.
+        </span>
+      </mat-slide-toggle>
+
+      @if (cameraRequired()) {
+        <div class="proctoring-options">
+          <mat-form-field>
+            <mat-label>Warnings before auto-submit</mat-label>
+            <mat-select formControlName="max_warnings">
+              @for (n of warningOptions; track n) {
+                <mat-option [value]="n">{{ n }}</mat-option>
+              }
+            </mat-select>
+            <mat-hint>{{ warningsHint(form.controls.max_warnings.value) }}</mat-hint>
+          </mat-form-field>
+
+          <mat-form-field>
+            <mat-label>Routine snapshot</mat-label>
+            <mat-select formControlName="snapshot_interval_seconds">
+              @for (o of intervalOptions; track o.value) {
+                <mat-option [value]="o.value">{{ o.label }}</mat-option>
+              }
+            </mat-select>
+            <mat-hint>A snapshot is also taken at every violation.</mat-hint>
+          </mat-form-field>
+        </div>
+      }
+    </section>
+  }
+
   <div class="actions">
     @if (showCancel()) {
       <button mat-button type="button" (click)="cancelled.emit()">Cancel</button>

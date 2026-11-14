@@ -63,3 +63,19 @@
 main:focus {
   outline: none;
 }
+
+.account-email {
+  max-width: 220px;
+  margin-right: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: var(--mat-sys-body-medium);
+  color: var(--mat-sys-on-surface-variant);
+}
+
+@media (max-width: 599px) {
+  .account-email {
+    display: none;
+  }
+}

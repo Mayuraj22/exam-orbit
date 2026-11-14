@@ -3,6 +3,7 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
+  DOCUMENT,
   effect,
   inject,
   input,
@@ -25,8 +26,9 @@ import { MatSort, MatSortModule } from '@angular/material/sort';
 import { MatTableDataSource, MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { RouterLink } from '@angular/router';
+import { Actions, ofType } from '@ngrx/effects';
 import { Store } from '@ngrx/store';
-import { filter } from 'rxjs';
+import { filter, take, takeUntil } from 'rxjs';
 import { AdminExamsActions } from '../../store/exams.actions';
 import {
   selectCandidates,
@@ -48,6 +50,12 @@ import {
   ImportCandidatesDialogComponent,
   ImportCandidatesDialogData,
 } from './import-candidates-dialog.component';
+import {
+  Credential,
+  CredentialsDialogComponent,
+  CredentialsDialogData,
+} from './credentials-dialog.component';
+import { generatePasscode } from '../../../../shared/utils/credentials';
 
 /** A candidate plus its exam title, for display, sorting and filtering. */
 interface CandidateRow extends Candidate {
@@ -90,6 +98,10 @@ export class CandidatesTableComponent implements OnInit, AfterViewInit {
   private readonly confirm = inject(ConfirmService);
   private readonly clipboard = inject(Clipboard);
   private readonly notify = inject(NotificationService);
+  private readonly actions$ = inject(Actions);
+
+  /** Where candidates sign in; shared in copied details. */
+  protected readonly loginUrl = `${inject(DOCUMENT).location.origin}/exam/login`;
 
   private readonly sort = viewChild(MatSort);
   private readonly paginator = viewChild(MatPaginator);
@@ -102,11 +114,14 @@ export class CandidatesTableComponent implements OnInit, AfterViewInit {
   protected readonly error = this.store.selectSignal(selectCandidatesError);
 
   protected readonly allExamsMode = computed(() => !this.examId());
+  /** Exam that Add/Import apply to: this tab's exam, or the one picked in the filter. */
+  protected readonly targetExamId = computed(() => {
+    const filter = this.examFilter();
+    return this.examId() ?? (filter !== 'all' ? filter : null);
+  });
   protected readonly search = signal('');
   /** Exam filter, only used in all-exams mode. */
   protected readonly examFilter = signal<string>('all');
-  /** Which rows have their passcode revealed. */
-  protected readonly revealed = signal<ReadonlySet<string>>(new Set());
 
   protected readonly rows = computed<CandidateRow[]>(() => {
     const dict = this.examDict();
@@ -131,8 +146,8 @@ export class CandidatesTableComponent implements OnInit, AfterViewInit {
 
   protected readonly displayedColumns = computed(() =>
     this.allExamsMode()
-      ? ['name', 'username', 'passcode', 'exam', 'status', 'actions']
-      : ['name', 'username', 'passcode', 'status', 'actions'],
+      ? ['name', 'username', 'exam', 'status', 'actions']
+      : ['name', 'username', 'status', 'actions'],
   );
 
   protected readonly dataSource = new MatTableDataSource<CandidateRow>([]);
@@ -173,43 +188,96 @@ export class CandidatesTableComponent implements OnInit, AfterViewInit {
   }
 
   protected openAdd(): void {
-    const examId = this.examId();
+    const examId = this.targetExamId();
     if (!examId) return;
-    this.dialog.open<AddCandidateDialogComponent, AddCandidateDialogData>(
-      AddCandidateDialogComponent,
-      {
-        data: { examId, takenUsernames: this.takenUsernames() },
-        width: '480px',
-        maxWidth: '94vw',
-      },
-    );
+    this.dialog
+      .open<AddCandidateDialogComponent, AddCandidateDialogData, Credential>(
+        AddCandidateDialogComponent,
+        {
+          data: { examId, takenUsernames: this.takenUsernames() },
+          width: '480px',
+          maxWidth: '94vw',
+        },
+      )
+      .afterClosed()
+      .subscribe((created) => {
+        if (created) this.showCredentials('Candidate added', [created], examId);
+      });
   }
 
   protected openImport(): void {
-    const examId = this.examId();
+    const examId = this.targetExamId();
     if (!examId) return;
-    this.dialog.open<ImportCandidatesDialogComponent, ImportCandidatesDialogData>(
-      ImportCandidatesDialogComponent,
+    this.dialog
+      .open<ImportCandidatesDialogComponent, ImportCandidatesDialogData, Credential[]>(
+        ImportCandidatesDialogComponent,
+        {
+          data: { examId, takenUsernames: this.takenUsernames() },
+          width: '720px',
+          maxWidth: '94vw',
+        },
+      )
+      .afterClosed()
+      .subscribe((created) => {
+        if (created?.length) {
+          this.showCredentials(`${created.length} candidates imported`, created, examId);
+        }
+      });
+  }
+
+  /** The one and only time new passcodes are shown. */
+  private showCredentials(title: string, credentials: Credential[], examId: string): void {
+    this.dialog.open<CredentialsDialogComponent, CredentialsDialogData>(
+      CredentialsDialogComponent,
       {
-        data: { examId, takenUsernames: this.takenUsernames() },
-        width: '720px',
+        data: { title, credentials, examTitle: this.examDict()[examId]?.title ?? 'Exam' },
+        width: '640px',
         maxWidth: '94vw',
       },
     );
   }
 
-  protected toggleReveal(id: string): void {
-    const next = new Set(this.revealed());
-    if (next.has(id)) next.delete(id);
-    else next.add(id);
-    this.revealed.set(next);
+  /** Lost passcode: make a new one, save it (hashed), and show it once. */
+  protected resetPasscode(c: CandidateRow): void {
+    this.confirm
+      .ask({
+        title: 'Reset passcode?',
+        message: `${c.name}'s current passcode will stop working. You'll see the new one once and need to send it to them.`,
+        confirmText: 'Reset passcode',
+      })
+      .pipe(filter(Boolean))
+      .subscribe(() => {
+        const passcode = generatePasscode();
+        // Show it only once the database has saved it.
+        this.actions$
+          .pipe(
+            ofType(AdminExamsActions.resetCandidatePasscodeSuccess),
+            filter(({ candidate }) => candidate.id === c.id),
+            take(1),
+            takeUntil(this.actions$.pipe(ofType(AdminExamsActions.resetCandidatePasscodeFailure))),
+          )
+          .subscribe(() =>
+            this.showCredentials(
+              'New passcode',
+              [{ name: c.name, username: c.username, passcode }],
+              c.exam_id,
+            ),
+          );
+        this.store.dispatch(AdminExamsActions.resetCandidatePasscode({ id: c.id, passcode }));
+      });
   }
 
+  /** Copies sign-in details without the passcode (it's stored hashed and can't be shown). */
   protected copyCredentials(c: CandidateRow): void {
     const ok = this.clipboard.copy(
-      `Exam: ${c.examTitle}\nUsername: ${c.username}\nPasscode: ${c.passcode}`,
+      [
+        `Exam: ${c.examTitle}`,
+        `Sign in at: ${this.loginUrl}`,
+        `Username: ${c.username}`,
+        'Passcode: sent separately',
+      ].join('\n'),
     );
-    if (ok) this.notify.success(`Login details for ${c.name} copied`);
+    if (ok) this.notify.success(`Sign-in details for ${c.name} copied (without passcode)`);
     else this.notify.error("Couldn't copy to the clipboard");
   }
 
@@ -236,13 +304,12 @@ export class CandidatesTableComponent implements OnInit, AfterViewInit {
       .subscribe(() => this.store.dispatch(AdminExamsActions.deleteCandidate({ id: c.id })));
   }
 
-  /** Exports what's currently shown (after search/filter), including passcodes. */
+  /** Exports what's currently shown (after search/filter). Passcodes are stored hashed, so they aren't included. */
   protected exportCsv(): void {
     const rows = this.dataSource.filteredData;
     const csv = toCsv(rows, [
       { header: 'Name', value: (r) => r.name },
       { header: 'Username', value: (r) => r.username },
-      { header: 'Passcode', value: (r) => r.passcode },
       { header: 'Exam', value: (r) => r.examTitle },
       { header: 'Status', value: (r) => (r.has_attempted ? 'Attempted' : 'Not started') },
     ]);

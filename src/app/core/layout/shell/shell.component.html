@@ -57,8 +57,17 @@
       >
         <mat-icon>{{ themeIcon() }}</mat-icon>
       </button>
-      <button mat-icon-button type="button" aria-label="Account" title="Admin">
-        <mat-icon>account_circle</mat-icon>
+      @if (email(); as email) {
+        <span class="account-email" [title]="email">{{ email }}</span>
+      }
+      <button
+        mat-icon-button
+        type="button"
+        aria-label="Sign out"
+        title="Sign out"
+        (click)="signOut()"
+      >
+        <mat-icon>logout</mat-icon>
       </button>
     </mat-toolbar>
 

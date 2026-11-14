@@ -12,7 +12,17 @@ import { SupabaseService } from '../../../core/services/supabase';
  * - mergeMap   for deletes: independent of each other, safe to run in parallel.
  */
 
+/** Postgres error codes we turn into plain-language messages. */
+const FRIENDLY_DB_ERRORS: Record<string, string> = {
+  '23505': 'That already exists. Usernames must be unique, so pick a different one.',
+  '23503': 'That item is linked to something that no longer exists. Refresh and try again.',
+  '23514': 'One of the values is out of the allowed range.',
+};
+
 const toMessage = (error: unknown): string =>
+  FRIENDLY_DB_ERRORS[(error as { code?: string })?.code ?? ''] ?? rawMessage(error);
+
+const rawMessage = (error: unknown): string =>
   error instanceof Error
     ? error.message
     : ((error as { message?: string })?.message ?? 'Something went wrong');
@@ -247,6 +257,20 @@ export const resetCandidateAttempt$ = createEffect(
   { functional: true },
 );
 
+export const resetCandidatePasscode$ = createEffect(
+  (actions$ = inject(Actions), api = inject(SupabaseService)) =>
+    actions$.pipe(
+      ofType(A.resetCandidatePasscode),
+      concatMap(({ id, passcode }) =>
+        api.updateCandidate(id, { passcode }).pipe(
+          map((candidate) => A.resetCandidatePasscodeSuccess({ candidate })),
+          catchError((e) => of(A.resetCandidatePasscodeFailure({ error: toMessage(e) }))),
+        ),
+      ),
+    ),
+  { functional: true },
+);
+
 export const loadAllResults$ = createEffect(
   (actions$ = inject(Actions), api = inject(SupabaseService)) =>
     actions$.pipe(
@@ -306,6 +330,7 @@ export const adminExamsEffects = {
   createCandidates$,
   deleteCandidate$,
   resetCandidateAttempt$,
+  resetCandidatePasscode$,
   loadAllResults$,
   loadResultsForExam$,
   submitGrading$,

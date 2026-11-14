@@ -1,0 +1,67 @@
+// Shared by the admin and candidate sign-in pages.
+.auth-page {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 24px 16px;
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 400px;
+  padding: 32px 28px;
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: 16px;
+  background: var(--mat-sys-surface);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 24px;
+  font: var(--mat-sys-title-large);
+  color: var(--mat-sys-primary);
+}
+
+h1 {
+  margin: 0;
+  font: var(--mat-sys-headline-small);
+}
+
+.sub {
+  margin: 4px 0 24px;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.form-error {
+  margin: 0 0 16px;
+  font: var(--mat-sys-body-medium);
+  color: var(--mat-sys-error);
+
+  mat-icon {
+    vertical-align: -3px;
+  }
+}
+
+.submit {
+  height: 44px;
+}
+
+mat-spinner {
+  display: inline-block;
+  margin-right: 8px;
+  vertical-align: middle;
+}
+
+.hint {
+  margin: 24px 0 0;
+  text-align: center;
+  font: var(--mat-sys-body-medium);
+  color: var(--mat-sys-on-surface-variant);
+
+  a {
+    color: var(--mat-sys-primary);
+  }
+}

@@ -118,3 +118,19 @@ table {
   text-align: center;
   color: var(--mat-sys-on-surface-variant);
 }
+
+.outcome,
+.flag {
+  margin-left: 8px;
+}
+
+.flag mat-icon {
+  vertical-align: -2px;
+}
+
+.attempt {
+  display: block;
+  margin-top: 2px;
+  font: var(--mat-sys-body-small);
+  color: var(--mat-sys-on-surface-variant);
+}

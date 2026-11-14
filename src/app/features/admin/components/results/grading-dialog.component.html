@@ -9,6 +9,11 @@
       <div class="score-box">
         <span class="score">{{ score() }} / {{ answers().length }}</span>
         <span class="percent">{{ percent() }}%</span>
+        @if (outcome(); as o) {
+          <span class="status-chip" [class.published]="o === 'pass'" [class.failed]="o === 'fail'">
+            {{ o === 'pass' ? 'Pass' : 'Fail' }} (pass mark {{ passMark() }}%)
+          </span>
+        }
       </div>
       <div class="summary-meta">
         <span

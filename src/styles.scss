@@ -171,6 +171,10 @@ body {
     background: var(--app-input-bg);
     color: var(--app-input-fg);
   }
+  &.failed {
+    background: var(--mat-sys-error-container);
+    color: var(--mat-sys-on-error-container);
+  }
 }
 
 /* Snackbar variants */

@@ -11,9 +11,7 @@ import { CandidatesTableComponent } from '../candidates/candidates-table.compone
       <header class="page-header">
         <div>
           <h1>Candidates</h1>
-          <p>
-            Everyone who can log in to an exam. To add candidates, open an exam's Candidates tab.
-          </p>
+          <p>Everyone who can sign in to an exam. Pick an exam to add or import candidates.</p>
         </div>
       </header>
       <mat-card appearance="outlined">

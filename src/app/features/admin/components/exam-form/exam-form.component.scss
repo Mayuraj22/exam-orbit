@@ -20,3 +20,48 @@ mat-spinner {
   margin-right: 8px;
   vertical-align: middle;
 }
+
+.settings-group {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 8px 0 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--mat-sys-outline-variant);
+
+  h3 {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+    font: var(--mat-sys-title-small);
+  }
+}
+
+.pass-field {
+  width: 220px;
+  max-width: 100%;
+}
+
+.toggle-hint {
+  display: block;
+  font: var(--mat-sys-body-small);
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.proctoring-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding-left: 52px;
+
+  mat-form-field {
+    flex: 1 1 240px;
+  }
+}
+
+@media (max-width: 599px) {
+  .proctoring-options {
+    padding-left: 0;
+  }
+}

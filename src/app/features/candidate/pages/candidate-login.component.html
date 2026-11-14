@@ -1,0 +1,76 @@
+<div class="auth-card">
+  @if (blocked(); as reason) {
+    <div class="blocked" role="status">
+      <mat-icon class="blocked-icon" aria-hidden="true">
+        {{ reason === 'already_attempted' ? 'task_alt' : 'event_busy' }}
+      </mat-icon>
+      @if (reason === 'already_attempted') {
+        <h1>You've already completed this exam</h1>
+        <p class="sub">
+          {{ session()?.exam?.title }} has been submitted. If you think this is a mistake, contact
+          your exam admin.
+        </p>
+      } @else {
+        <h1>This exam isn't open yet</h1>
+        <p class="sub">
+          {{ session()?.exam?.title }} hasn't been opened by your exam admin. Try again later.
+        </p>
+      }
+      <button mat-stroked-button type="button" (click)="backToSignIn()">Back to sign in</button>
+    </div>
+  } @else {
+    <h1>Sign in to your exam</h1>
+    <p class="sub">Use the username and passcode your exam admin sent you.</p>
+
+    <form [formGroup]="form" (ngSubmit)="submit()">
+      <mat-form-field class="full-width">
+        <mat-label>Username</mat-label>
+        <input
+          matInput
+          formControlName="username"
+          autocomplete="username"
+          autocapitalize="none"
+          spellcheck="false"
+          required
+        />
+        <mat-error>Enter your username.</mat-error>
+      </mat-form-field>
+
+      <mat-form-field class="full-width">
+        <mat-label>Passcode</mat-label>
+        <input
+          matInput
+          [type]="showPasscode() ? 'text' : 'password'"
+          formControlName="passcode"
+          autocomplete="current-password"
+          autocapitalize="characters"
+          spellcheck="false"
+          required
+        />
+        <button
+          mat-icon-button
+          matSuffix
+          type="button"
+          (click)="showPasscode.set(!showPasscode())"
+          [attr.aria-label]="showPasscode() ? 'Hide passcode' : 'Show passcode'"
+        >
+          <mat-icon>{{ showPasscode() ? 'visibility_off' : 'visibility' }}</mat-icon>
+        </button>
+        <mat-error>Enter your passcode.</mat-error>
+      </mat-form-field>
+
+      @if (formError(); as message) {
+        <p class="form-error" role="alert">
+          <mat-icon inline aria-hidden="true">error_outline</mat-icon> {{ message }}
+        </p>
+      }
+
+      <button mat-flat-button type="submit" class="full-width submit" [disabled]="loading()">
+        @if (loading()) {
+          <mat-spinner diameter="18" />
+        }
+        Continue
+      </button>
+    </form>
+  }
+</div>

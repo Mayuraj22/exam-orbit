@@ -1,0 +1,157 @@
+@if (loading()) {
+  <div class="center" aria-busy="true">
+    <mat-spinner diameter="40" />
+    <p>Loading your exam…</p>
+  </div>
+} @else if (loadError(); as message) {
+  <div class="center" role="alert">
+    <mat-icon class="big" aria-hidden="true">cloud_off</mat-icon>
+    <p>{{ message }}</p>
+    <button mat-flat-button type="button" (click)="ngOnInit()">Try again</button>
+  </div>
+} @else {
+  <div class="exam">
+    <header class="exam-bar">
+      <div class="progress-info">
+        <span class="q-count">Question {{ index() + 1 }} of {{ questions().length }}</span>
+        <span class="answered">{{ answeredCount() }} answered</span>
+      </div>
+
+      <span class="save-state" aria-live="polite">
+        @if (anySaving()) {
+          <mat-icon inline aria-hidden="true">sync</mat-icon> Saving…
+        } @else if (anyError()) {
+          <mat-icon inline aria-hidden="true">error</mat-icon> Not saved, retrying on submit
+        } @else if (answeredCount() > 0) {
+          <mat-icon inline aria-hidden="true">cloud_done</mat-icon> Saved
+        }
+      </span>
+
+      <span class="spacer"></span>
+
+      <span class="timer" [class.low]="timeLow()" role="timer" aria-label="Time remaining">
+        <mat-icon aria-hidden="true">schedule</mat-icon>
+        {{ timeLabel() }}
+      </span>
+
+      @if (proctored()) {
+        <div class="self-view" [class.off]="proctoring.cameraState() !== 'on'">
+          <video #selfView autoplay muted playsinline aria-label="Your camera"></video>
+          @if (violations() > 0) {
+            <span class="violations" [attr.aria-label]="violations() + ' warnings'">
+              {{ violations() }}
+            </span>
+          }
+        </div>
+      }
+
+      <button mat-flat-button type="button" [disabled]="submitting()" (click)="confirmSubmit()">
+        @if (submitting()) {
+          <mat-spinner diameter="18" />
+        }
+        Submit
+      </button>
+    </header>
+    <mat-progress-bar
+      mode="determinate"
+      [value]="questions().length ? (answeredCount() / questions().length) * 100 : 0"
+      aria-label="Answered questions"
+    />
+
+    @if (proctored() && !isFullscreen()) {
+      <div class="fullscreen-banner" role="alert">
+        <mat-icon aria-hidden="true">fullscreen_exit</mat-icon>
+        <span>The exam must stay in fullscreen.</span>
+        <button mat-flat-button type="button" (click)="enterFullscreen()">
+          Return to fullscreen
+        </button>
+      </div>
+    }
+    @if (proctored() && proctoring.cameraState() !== 'on') {
+      <div class="fullscreen-banner" role="alert">
+        <mat-icon aria-hidden="true">videocam_off</mat-icon>
+        <span>Your camera is off. Turn it back on to continue.</span>
+        <button mat-flat-button type="button" (click)="proctoring.startCamera()">
+          Turn on camera
+        </button>
+      </div>
+    }
+
+    <div class="body">
+      @if (current(); as q) {
+        <section class="question" [attr.aria-label]="'Question ' + (index() + 1)">
+          <p class="q-text">{{ q.text }}</p>
+
+          @if (q.type === 'mcq') {
+            <mat-radio-group
+              class="options"
+              [value]="answerFor(q) ?? null"
+              (change)="chooseOption(q, $event.value)"
+              [attr.aria-label]="'Answer to question ' + (index() + 1)"
+            >
+              @for (option of q.options ?? []; track option.id) {
+                <mat-radio-button [value]="option.id" class="option">
+                  {{ option.text }}
+                </mat-radio-button>
+              }
+            </mat-radio-group>
+          } @else {
+            <mat-form-field class="full-width">
+              <mat-label>Your answer</mat-label>
+              <textarea
+                matInput
+                rows="3"
+                [value]="answerFor(q) ?? ''"
+                (input)="typeAnswer(q, $any($event.target).value)"
+                (blur)="flushInput(q)"
+                maxlength="2000"
+              ></textarea>
+            </mat-form-field>
+          }
+
+          <div class="q-nav">
+            <button
+              mat-stroked-button
+              type="button"
+              [disabled]="index() === 0"
+              (click)="go(index() - 1)"
+            >
+              <mat-icon>arrow_back</mat-icon>
+              Previous
+            </button>
+            @if (index() < questions().length - 1) {
+              <button mat-flat-button type="button" (click)="go(index() + 1)">
+                Next
+                <mat-icon iconPositionEnd>arrow_forward</mat-icon>
+              </button>
+            } @else {
+              <button mat-flat-button type="button" (click)="confirmSubmit()">
+                Review and submit
+              </button>
+            }
+          </div>
+        </section>
+      } @else {
+        <p class="center">This exam has no questions.</p>
+      }
+
+      <nav class="navigator" aria-label="Questions">
+        @for (q of questions(); track q.id; let i = $index) {
+          <button
+            type="button"
+            class="nav-item"
+            [class.current]="i === index()"
+            [class.answered]="isAnswered(q)"
+            [attr.aria-current]="i === index() ? 'step' : null"
+            [attr.aria-label]="
+              'Question ' + (i + 1) + (isAnswered(q) ? ', answered' : ', not answered')
+            "
+            (click)="go(i)"
+          >
+            {{ i + 1 }}
+          </button>
+        }
+      </nav>
+    </div>
+  </div>
+}

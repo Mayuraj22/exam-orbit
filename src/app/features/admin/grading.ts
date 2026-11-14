@@ -75,3 +75,14 @@ export function scoreOf(
   const s = score ?? 0;
   return { score: s, total, percent: total > 0 ? Math.round((s / total) * 100) : null };
 }
+
+export type PassOutcome = 'pass' | 'fail';
+
+/**
+ * Pass/fail for a percentage against the exam's pass mark.
+ * null when the exam has no pass mark or the percentage is unknown.
+ */
+export function passOutcome(percent: number | null, passMark: number | null): PassOutcome | null {
+  if (passMark === null || passMark === undefined || percent === null) return null;
+  return percent >= passMark ? 'pass' : 'fail';
+}

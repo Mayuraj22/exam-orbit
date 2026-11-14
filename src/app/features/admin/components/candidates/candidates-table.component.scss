@@ -118,3 +118,12 @@ table {
     color: inherit;
   }
 }
+
+.pick-exam-hint {
+  font: var(--mat-sys-body-medium);
+  color: var(--mat-sys-on-surface-variant);
+
+  mat-icon {
+    vertical-align: -2px;
+  }
+}

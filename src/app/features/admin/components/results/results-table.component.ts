@@ -37,6 +37,7 @@ import {
 import { Result } from '../../../../shared/models/result.model';
 import { downloadCsv, slugify, toCsv } from '../../../../shared/utils/csv';
 import { GradingDialogComponent, GradingDialogData } from './grading-dialog.component';
+import { PassOutcome, passOutcome } from '../../grading';
 
 type GradingStatus = 'graded' | 'needs-grading';
 
@@ -48,6 +49,8 @@ interface ResultRow extends Result {
   total: number | null;
   percent: number | null;
   status: GradingStatus;
+  /** null when the exam has no pass mark (or the percentage is unknown). */
+  outcome: PassOutcome | null;
 }
 
 /**
@@ -119,14 +122,16 @@ export class ResultsTableComponent implements OnInit, AfterViewInit {
       .map((r) => {
         const total = counts[r.exam_id] ?? null;
         const status: GradingStatus = r.is_fully_graded ? 'graded' : 'needs-grading';
+        const percent = total ? Math.round(((r.score ?? 0) / total) * 100) : null;
         return {
           ...r,
           candidateName: candidates[r.candidate_id]?.name ?? 'Unknown candidate',
           candidateUsername: candidates[r.candidate_id]?.username ?? '',
           examTitle: exams[r.exam_id]?.title ?? 'Unknown exam',
           total,
-          percent: total ? Math.round(((r.score ?? 0) / total) * 100) : null,
+          percent,
           status,
+          outcome: passOutcome(percent, exams[r.exam_id]?.pass_mark ?? null),
         };
       })
       .filter((r) => statusFilter === 'all' || r.status === statusFilter);
@@ -138,6 +143,9 @@ export class ResultsTableComponent implements OnInit, AfterViewInit {
     const all = this.results().filter((r) => !examId || r.exam_id === examId);
     const total = examId ? (this.questionCounts()[examId] ?? 0) : 0;
     const percents = total ? all.map((r) => ((r.score ?? 0) / total) * 100) : [];
+    const passMark = examId ? (this.examDict()[examId]?.pass_mark ?? null) : null;
+    const outcomes = percents.map((p) => passOutcome(p, passMark));
+    const passed = outcomes.filter((o) => o === 'pass').length;
     const avg = percents.length
       ? Math.round(percents.reduce((s, p) => s + p, 0) / percents.length)
       : null;
@@ -147,6 +155,11 @@ export class ResultsTableComponent implements OnInit, AfterViewInit {
       average: avg,
       highest: percents.length ? Math.round(Math.max(...percents)) : null,
       lowest: percents.length ? Math.round(Math.min(...percents)) : null,
+      passMark,
+      /** % of submissions that passed; null without a pass mark. */
+      passRate:
+        passMark !== null && percents.length ? Math.round((passed / percents.length) * 100) : null,
+      flagged: all.filter((r) => r.terminated_by_proctoring || r.violation_count > 0).length,
     };
   });
 
@@ -236,6 +249,13 @@ export class ResultsTableComponent implements OnInit, AfterViewInit {
       { header: 'Score', value: (r) => r.score ?? '' },
       { header: 'Out of', value: (r) => r.total ?? '' },
       { header: 'Percent', value: (r) => (r.percent === null ? '' : `${r.percent}%`) },
+      {
+        header: 'Result',
+        value: (r) => (r.outcome === null ? '' : r.outcome === 'pass' ? 'Pass' : 'Fail'),
+      },
+      { header: 'Attempt', value: (r) => r.attempt_number },
+      { header: 'Violations', value: (r) => r.violation_count },
+      { header: 'Ended by proctoring', value: (r) => (r.terminated_by_proctoring ? 'Yes' : 'No') },
       { header: 'Submitted', value: (r) => new Date(r.submitted_at).toLocaleString() },
       { header: 'Status', value: (r) => (r.status === 'graded' ? 'Graded' : 'Needs grading') },
     ]);

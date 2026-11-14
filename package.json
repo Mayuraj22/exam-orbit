@@ -27,6 +27,7 @@
     "@angular/platform-server": "^21.2.0",
     "@angular/router": "^21.2.0",
     "@angular/ssr": "^21.2.23",
+    "@mediapipe/tasks-vision": "^0.10.21",
     "@ngrx/effects": "^21.1.1",
     "@ngrx/entity": "^21.1.1",
     "@ngrx/store": "^21.1.1",

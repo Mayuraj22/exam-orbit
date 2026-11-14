@@ -16,7 +16,7 @@
       <mat-icon>download</mat-icon>
       Export CSV
     </button>
-    @if (!allExamsMode()) {
+    @if (targetExamId()) {
       <button mat-stroked-button type="button" (click)="openImport()">
         <mat-icon>upload_file</mat-icon>
         Import CSV
@@ -25,6 +25,11 @@
         <mat-icon>person_add</mat-icon>
         Add candidate
       </button>
+    } @else {
+      <span class="pick-exam-hint">
+        <mat-icon inline aria-hidden="true">info</mat-icon>
+        Choose an exam below to add candidates
+      </span>
     }
   </div>
 
@@ -81,23 +86,6 @@
         <td mat-cell *matCellDef="let c" data-label="Username" class="mono">{{ c.username }}</td>
       </ng-container>
 
-      <ng-container matColumnDef="passcode">
-        <th mat-header-cell *matHeaderCellDef>Passcode</th>
-        <td mat-cell *matCellDef="let c" data-label="Passcode" class="nowrap">
-          <span class="mono passcode">{{ revealed().has(c.id) ? c.passcode : '••••••' }}</span>
-          <button
-            mat-icon-button
-            type="button"
-            class="small-icon"
-            (click)="toggleReveal(c.id)"
-            [matTooltip]="revealed().has(c.id) ? 'Hide' : 'Show'"
-            [attr.aria-label]="(revealed().has(c.id) ? 'Hide' : 'Show') + ' passcode for ' + c.name"
-          >
-            <mat-icon>{{ revealed().has(c.id) ? 'visibility_off' : 'visibility' }}</mat-icon>
-          </button>
-        </td>
-      </ng-container>
-
       <ng-container matColumnDef="exam">
         <th mat-header-cell *matHeaderCellDef mat-sort-header="examTitle">Exam</th>
         <td mat-cell *matCellDef="let c" data-label="Exam">
@@ -130,8 +118,8 @@
             mat-icon-button
             type="button"
             (click)="copyCredentials(c)"
-            matTooltip="Copy login details"
-            [attr.aria-label]="'Copy login details for ' + c.name"
+            matTooltip="Copy sign-in details"
+            [attr.aria-label]="'Copy sign-in details for ' + c.name"
           >
             <mat-icon>content_copy</mat-icon>
           </button>
@@ -157,7 +145,7 @@
           } @else if (search()) {
             No candidates match "{{ search() }}".
           } @else if (allExamsMode()) {
-            No candidates yet. Open an exam to add candidates.
+            No candidates yet. Choose an exam above, then Add candidate.
           } @else {
             No candidates yet. Add one, or import a CSV file.
           }
@@ -179,7 +167,7 @@
   <ng-template matMenuContent let-c="c">
     <button mat-menu-item type="button" (click)="copyCredentials(c)">
       <mat-icon>content_copy</mat-icon>
-      <span>Copy login details</span>
+      <span>Copy sign-in details</span>
     </button>
     <button
       mat-menu-item
@@ -189,6 +177,10 @@
     >
       <mat-icon>restart_alt</mat-icon>
       <span>Reset attempt</span>
+    </button>
+    <button mat-menu-item type="button" [disabled]="saving()" (click)="resetPasscode(c)">
+      <mat-icon>key</mat-icon>
+      <span>Reset passcode</span>
     </button>
     <mat-divider />
     <button mat-menu-item type="button" class="danger" [disabled]="saving()" (click)="remove(c)">

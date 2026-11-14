@@ -16,6 +16,7 @@ import { MatListModule } from '@angular/material/list';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { ThemePreference, ThemeService } from '../../services/theme.service';
+import { AdminAuthService } from '../../services/admin-auth.service';
 
 interface NavItem {
   label: string;
@@ -85,6 +86,16 @@ export class ShellComponent {
   }
 
   private readonly theme = inject(ThemeService);
+  private readonly auth = inject(AdminAuthService);
+  private readonly router = inject(Router);
+
+  protected readonly email = this.auth.email;
+
+  protected async signOut(): Promise<void> {
+    await this.auth.signOut();
+    this.router.navigateByUrl('/login');
+  }
+
   private readonly document = inject(DOCUMENT);
 
   private static readonly THEME_ORDER: ThemePreference[] = ['system', 'light', 'dark'];

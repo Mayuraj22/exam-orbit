@@ -41,6 +41,7 @@ const failureMessages = [
   [A.createCandidatesFailure, "Couldn't add candidates"],
   [A.deleteCandidateFailure, "Couldn't remove the candidate"],
   [A.resetCandidateAttemptFailure, "Couldn't reset the attempt"],
+  [A.resetCandidatePasscodeFailure, "Couldn't reset the passcode"],
 ] as const;
 
 const successByType = new Map<string, string>(

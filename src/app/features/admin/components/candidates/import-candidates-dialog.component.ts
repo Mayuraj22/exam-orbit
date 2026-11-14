@@ -9,6 +9,7 @@ import { Store } from '@ngrx/store';
 import { AdminExamsActions } from '../../store/exams.actions';
 import { selectCandidatesSaving } from '../../store/exams.selectors';
 import { downloadCsv, parseCsv } from '../../../../shared/utils/csv';
+import { Credential } from './credentials-dialog.component';
 import {
   generatePasscode,
   generateUsername,
@@ -56,7 +57,15 @@ export class ImportCandidatesDialogComponent {
   constructor() {
     inject(Actions)
       .pipe(ofType(AdminExamsActions.createCandidatesSuccess), takeUntilDestroyed())
-      .subscribe(() => this.dialogRef.close(true));
+      .subscribe(() =>
+        this.dialogRef.close(
+          this.validRows().map((r): Credential => ({
+            name: r.name,
+            username: r.username,
+            passcode: r.passcode,
+          })),
+        ),
+      );
   }
 
   protected downloadTemplate(): void {

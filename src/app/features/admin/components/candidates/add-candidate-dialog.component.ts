@@ -12,6 +12,7 @@ import { Actions, ofType } from '@ngrx/effects';
 import { Store } from '@ngrx/store';
 import { AdminExamsActions } from '../../store/exams.actions';
 import { selectCandidatesSaving } from '../../store/exams.selectors';
+import { Credential } from './credentials-dialog.component';
 import {
   generatePasscode,
   generateUsername,
@@ -76,9 +77,7 @@ export interface AddCandidateDialogData {
           >
             <mat-icon>refresh</mat-icon>
           </button>
-          <mat-hint
-            >Share this with the candidate. It is also shown in the candidates table.</mat-hint
-          >
+          <mat-hint>You'll see it once more after saving, then it's stored securely.</mat-hint>
         </mat-form-field>
       </mat-dialog-content>
 
@@ -135,7 +134,10 @@ export class AddCandidateDialogComponent {
   constructor() {
     inject(Actions)
       .pipe(ofType(AdminExamsActions.createCandidatesSuccess), takeUntilDestroyed())
-      .subscribe(() => this.dialogRef.close(true));
+      .subscribe(() => {
+        const { name, username, passcode } = this.form.getRawValue();
+        this.dialogRef.close({ name: name.trim(), username, passcode } satisfies Credential);
+      });
   }
 
   /** Fills the username from the name, unless the admin already typed one. */

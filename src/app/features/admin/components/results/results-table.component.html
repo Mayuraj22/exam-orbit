@@ -23,10 +23,24 @@
         >
         <span class="stat-label">Lowest</span>
       </div>
+      @if (summary().passMark !== null) {
+        <div class="stat">
+          <span class="stat-value"
+            >{{ summary().passRate ?? '—' }}{{ summary().passRate !== null ? '%' : '' }}</span
+          >
+          <span class="stat-label">Pass rate (pass mark {{ summary().passMark }}%)</span>
+        </div>
+      }
       <div class="stat" [class.attention]="summary().needsGrading > 0">
         <span class="stat-value">{{ summary().needsGrading }}</span>
         <span class="stat-label">Needs grading</span>
       </div>
+      @if (summary().flagged > 0) {
+        <div class="stat attention">
+          <span class="stat-value">{{ summary().flagged }}</span>
+          <span class="stat-label">Proctoring flags</span>
+        </div>
+      }
     </div>
   }
 
@@ -129,6 +143,15 @@
           @if (r.percent !== null) {
             <span class="percent">{{ r.percent }}%</span>
           }
+          @if (r.outcome) {
+            <span
+              class="status-chip outcome"
+              [class.published]="r.outcome === 'pass'"
+              [class.failed]="r.outcome === 'fail'"
+            >
+              {{ r.outcome === 'pass' ? 'Pass' : 'Fail' }}
+            </span>
+          }
         </td>
       </ng-container>
 
@@ -149,6 +172,23 @@
           >
             {{ r.status === 'graded' ? 'Graded' : 'Needs grading' }}
           </span>
+          @if (r.terminated_by_proctoring) {
+            <span class="status-chip failed flag" title="Auto-submitted after too many violations">
+              <mat-icon inline aria-hidden="true">flag</mat-icon> Ended by proctoring
+            </span>
+          } @else if (r.violation_count > 0) {
+            <span
+              class="status-chip draft flag"
+              [title]="r.violation_count + ' proctoring warning(s)'"
+            >
+              <mat-icon inline aria-hidden="true">flag</mat-icon> {{ r.violation_count }} warning{{
+                r.violation_count === 1 ? '' : 's'
+              }}
+            </span>
+          }
+          @if (r.attempt_number > 1) {
+            <span class="attempt">Attempt {{ r.attempt_number }}</span>
+          }
         </td>
       </ng-container>
 

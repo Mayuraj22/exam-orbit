@@ -1,16 +1,25 @@
 import { Injectable } from '@angular/core';
 import { createClient, PostgrestError, SupabaseClient } from '@supabase/supabase-js';
-import { from, Observable } from 'rxjs';
+import { from, map, Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
-import { Exam } from '../../shared/models/exam.model';
+import { DEFAULT_EXAM_SETTINGS, Exam, NewExam } from '../../shared/models/exam.model';
 import { Question } from '../../shared/models/question.model';
-import { Candidate } from '../../shared/models/candidate.model';
-import { Result } from '../../shared/models/result.model';
+import { Candidate, NewCandidate } from '../../shared/models/candidate.model';
+import { DEFAULT_RESULT_FIELDS, Result } from '../../shared/models/result.model';
 
 type ExamInput = Omit<Exam, 'id' | 'created_at'>;
 type QuestionInput = Omit<Question, 'id'>;
-type CandidateInput = Omit<Candidate, 'id'>;
 type ResultInput = Omit<Result, 'id' | 'submitted_at'>;
+
+/**
+ * Rows read before the Phase 6 migration lack the new columns; fill in the
+ * database defaults so the rest of the app can rely on them.
+ */
+const normalizeExam = (row: Exam): Exam => ({ ...DEFAULT_EXAM_SETTINGS, ...row });
+const normalizeResult = (row: Result): Result => ({ ...DEFAULT_RESULT_FIELDS, ...row });
+
+/** Candidate columns the admin app reads. Never the passcode hash. */
+const CANDIDATE_COLUMNS = 'id, exam_id, name, username, has_attempted';
 
 /** Shape of every Supabase query response we await. */
 interface QueryResponse<T> {
@@ -46,21 +55,28 @@ export class SupabaseService {
 
   // Exams
   getExams(): Observable<Exam[]> {
-    return this.run(
+    return this.run<Exam[]>(
       this.supabase.from('exams').select('*').order('created_at', { ascending: false }),
-    );
+    ).pipe(map((rows) => rows.map(normalizeExam)));
   }
 
   getExamById(id: string): Observable<Exam> {
-    return this.run(this.supabase.from('exams').select('*').eq('id', id).single());
+    return this.run<Exam>(this.supabase.from('exams').select('*').eq('id', id).single()).pipe(
+      map(normalizeExam),
+    );
   }
 
-  createExam(exam: ExamInput): Observable<Exam> {
-    return this.run(this.supabase.from('exams').insert(exam).select().single());
+  /** Accepts just the basics; settings not given use the database defaults. */
+  createExam(exam: NewExam): Observable<Exam> {
+    return this.run<Exam>(this.supabase.from('exams').insert(exam).select().single()).pipe(
+      map(normalizeExam),
+    );
   }
 
   updateExam(id: string, changes: Partial<ExamInput>): Observable<Exam> {
-    return this.run(this.supabase.from('exams').update(changes).eq('id', id).select().single());
+    return this.run<Exam>(
+      this.supabase.from('exams').update(changes).eq('id', id).select().single(),
+    ).pipe(map(normalizeExam));
   }
 
   deleteExam(id: string): Observable<void> {
@@ -89,17 +105,18 @@ export class SupabaseService {
           this.supabase.from('questions').select('*').eq('exam_id', id).order('order_index'),
         );
 
-        const copy = await this.unwrap<Exam>(
-          this.supabase
-            .from('exams')
-            .insert({
-              title: `${source.title} (copy)`,
-              description: source.description,
-              duration_minutes: source.duration_minutes,
-              is_published: false,
-            })
-            .select()
-            .single(),
+        // Copy everything except identity fields; the copy starts as a draft.
+        const { id: sourceId, created_at, ...fields } = source;
+        void sourceId;
+        void created_at;
+        const copy = normalizeExam(
+          await this.unwrap<Exam>(
+            this.supabase
+              .from('exams')
+              .insert({ ...fields, title: `${source.title} (copy)`, is_published: false })
+              .select()
+              .single(),
+          ),
         );
 
         if (questions.length) {
@@ -152,44 +169,44 @@ export class SupabaseService {
   // Candidates
   getCandidatesByExamId(examId: string): Observable<Candidate[]> {
     return this.run(
-      this.supabase.from('candidates').select('*').eq('exam_id', examId).order('name'),
+      this.supabase
+        .from('candidates')
+        .select(CANDIDATE_COLUMNS)
+        .eq('exam_id', examId)
+        .order('name'),
     );
   }
 
   /** Every candidate across all exams (sidebar Candidates page). */
   getAllCandidates(): Observable<Candidate[]> {
-    return this.run(this.supabase.from('candidates').select('*').order('name'));
+    return this.run(this.supabase.from('candidates').select(CANDIDATE_COLUMNS).order('name'));
   }
 
-  createCandidate(candidate: CandidateInput): Observable<Candidate> {
-    return this.run(this.supabase.from('candidates').insert(candidate).select().single());
+  createCandidate(candidate: NewCandidate): Observable<Candidate> {
+    return this.run(
+      this.supabase.from('candidates').insert(candidate).select(CANDIDATE_COLUMNS).single(),
+    );
   }
 
   /** Bulk insert (CSV import) in one request: all rows succeed or none do. */
-  createCandidates(candidates: CandidateInput[]): Observable<Candidate[]> {
-    return this.run(this.supabase.from('candidates').insert(candidates).select());
+  createCandidates(candidates: NewCandidate[]): Observable<Candidate[]> {
+    return this.run(this.supabase.from('candidates').insert(candidates).select(CANDIDATE_COLUMNS));
   }
 
-  updateCandidate(id: string, changes: Partial<CandidateInput>): Observable<Candidate> {
+  /** `passcode` in changes = reset it (hashed by the database). */
+  updateCandidate(id: string, changes: Partial<NewCandidate>): Observable<Candidate> {
     return this.run(
-      this.supabase.from('candidates').update(changes).eq('id', id).select().single(),
+      this.supabase
+        .from('candidates')
+        .update(changes)
+        .eq('id', id)
+        .select(CANDIDATE_COLUMNS)
+        .single(),
     );
   }
 
   deleteCandidate(id: string): Observable<void> {
     return this.run(this.supabase.from('candidates').delete().eq('id', id));
-  }
-
-  // TODO(security phase): move to a server-side function with hashed passcodes.
-  verifyCandidateLogin(username: string, passcode: string): Observable<Candidate> {
-    return this.run(
-      this.supabase
-        .from('candidates')
-        .select('*')
-        .eq('username', username)
-        .eq('passcode', passcode)
-        .single(),
-    );
   }
 
   markCandidateAttempted(id: string): Observable<Candidate> {
@@ -209,21 +226,29 @@ export class SupabaseService {
   }
 
   getResultsByExamId(examId: string): Observable<Result[]> {
-    return this.run(this.supabase.from('results').select('*').eq('exam_id', examId));
+    return this.run<Result[]>(this.supabase.from('results').select('*').eq('exam_id', examId)).pipe(
+      map((rows) => rows.map(normalizeResult)),
+    );
   }
 
   /** Every result across all exams, newest first (sidebar Results page). */
   getAllResults(): Observable<Result[]> {
-    return this.run(
+    return this.run<Result[]>(
       this.supabase.from('results').select('*').order('submitted_at', { ascending: false }),
-    );
+    ).pipe(map((rows) => rows.map(normalizeResult)));
   }
 
-  /** Emits null when the candidate has not submitted yet. */
+  /** The candidate's latest attempt, or null when they have not submitted yet. */
   getResultByCandidateId(candidateId: string): Observable<Result | null> {
-    return this.run(
-      this.supabase.from('results').select('*').eq('candidate_id', candidateId).maybeSingle(),
-    );
+    return this.run<Result | null>(
+      this.supabase
+        .from('results')
+        .select('*')
+        .eq('candidate_id', candidateId)
+        .order('submitted_at', { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+    ).pipe(map((row) => (row ? normalizeResult(row) : null)));
   }
 
   updateResultGrading(
@@ -232,13 +257,13 @@ export class SupabaseService {
     newScore: number,
     isFullyGraded: boolean,
   ): Observable<Result> {
-    return this.run(
+    return this.run<Result>(
       this.supabase
         .from('results')
         .update({ graded_answers: gradedAnswers, score: newScore, is_fully_graded: isFullyGraded })
         .eq('id', resultId)
         .select()
         .single(),
-    );
+    ).pipe(map(normalizeResult));
   }
 }

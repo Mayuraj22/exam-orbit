@@ -134,11 +134,12 @@
             Settings
           </ng-template>
           <div class="settings">
-            <h2>Exam details</h2>
+            <h2>Exam details and settings</h2>
             <app-exam-form
               [exam]="exam"
               [saving]="saving()"
               [showCancel]="false"
+              [showSettings]="true"
               submitLabel="Save changes"
               (submitted)="saveSettings($event)"
             />

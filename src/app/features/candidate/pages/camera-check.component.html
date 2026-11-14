@@ -1,0 +1,57 @@
+<article class="check">
+  <h1>Camera check</h1>
+  <p class="sub">Make sure you're clearly visible and alone before you start.</p>
+
+  <div class="preview-wrap">
+    <video #preview class="preview" autoplay muted playsinline aria-label="Your camera"></video>
+    @if (proctoring.cameraState() !== 'on') {
+      <div class="preview-placeholder">
+        <mat-icon aria-hidden="true">videocam_off</mat-icon>
+      </div>
+    }
+  </div>
+
+  <ul class="checks" aria-live="polite">
+    @for (check of checks(); track $index) {
+      <li [class]="check.state">
+        @switch (check.state) {
+          @case ('pass') {
+            <mat-icon aria-hidden="true">check_circle</mat-icon>
+          }
+          @case ('warn') {
+            <mat-icon aria-hidden="true">warning</mat-icon>
+          }
+          @case ('fail') {
+            <mat-icon aria-hidden="true">cancel</mat-icon>
+          }
+          @default {
+            <mat-spinner diameter="20" aria-hidden="true" />
+          }
+        }
+        <div>
+          <span class="label">{{ check.label }}</span>
+          @if (check.help) {
+            <span class="help">{{ check.help }}</span>
+          }
+        </div>
+      </li>
+    }
+  </ul>
+
+  <div class="actions">
+    @if (checks()[0].state === 'fail') {
+      <button mat-stroked-button type="button" (click)="retry()">
+        <mat-icon>refresh</mat-icon>
+        Try again
+      </button>
+    }
+    <span class="spacer"></span>
+    <button mat-flat-button type="button" [disabled]="!ready() || starting()" (click)="start()">
+      <mat-icon>fullscreen</mat-icon>
+      Start exam in fullscreen
+    </button>
+  </div>
+  @if (!ready()) {
+    <p class="hint">The start button turns on once your camera and face checks pass.</p>
+  }
+</article>

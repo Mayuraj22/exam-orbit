@@ -110,10 +110,16 @@ const adminExamsReducer = createReducer(
 
   // Candidates
   on(A.loadCandidates, (state) => ({ ...state, candidates: fetching(state.candidates) })),
-  on(A.createCandidates, A.deleteCandidate, A.resetCandidateAttempt, (state) => ({
-    ...state,
-    candidates: saving(state.candidates),
-  })),
+  on(
+    A.createCandidates,
+    A.deleteCandidate,
+    A.resetCandidateAttempt,
+    A.resetCandidatePasscode,
+    (state) => ({
+      ...state,
+      candidates: saving(state.candidates),
+    }),
+  ),
   on(A.loadCandidatesSuccess, (state, { candidates }) => ({
     ...state,
     candidates: candidatesAdapter.setAll(candidates, done(state.candidates)),
@@ -122,7 +128,7 @@ const adminExamsReducer = createReducer(
     ...state,
     candidates: candidatesAdapter.addMany(candidates, done(state.candidates)),
   })),
-  on(A.resetCandidateAttemptSuccess, (state, { candidate }) => ({
+  on(A.resetCandidateAttemptSuccess, A.resetCandidatePasscodeSuccess, (state, { candidate }) => ({
     ...state,
     candidates: candidatesAdapter.upsertOne(candidate, done(state.candidates)),
   })),
@@ -135,6 +141,7 @@ const adminExamsReducer = createReducer(
     A.createCandidatesFailure,
     A.deleteCandidateFailure,
     A.resetCandidateAttemptFailure,
+    A.resetCandidatePasscodeFailure,
     (state, { error }) => ({ ...state, candidates: failed(state.candidates, error) }),
   ),
 

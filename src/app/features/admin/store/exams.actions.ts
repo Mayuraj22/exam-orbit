@@ -1,8 +1,8 @@
 import { createActionGroup, emptyProps, props } from '@ngrx/store';
-import { Exam } from '../../../shared/models/exam.model';
+import { Exam, NewExam } from '../../../shared/models/exam.model';
 import { Question } from '../../../shared/models/question.model';
 import { Result } from '../../../shared/models/result.model';
-import { Candidate } from '../../../shared/models/candidate.model';
+import { Candidate, NewCandidate } from '../../../shared/models/candidate.model';
 
 export const AdminExamsActions = createActionGroup({
   source: 'Admin Exams',
@@ -11,7 +11,7 @@ export const AdminExamsActions = createActionGroup({
     'Load Exams Success': props<{ exams: Exam[] }>(),
     'Load Exams Failure': props<{ error: string }>(),
 
-    'Create Exam': props<{ exam: Omit<Exam, 'id' | 'created_at'> }>(),
+    'Create Exam': props<{ exam: NewExam }>(),
     'Create Exam Success': props<{ exam: Exam }>(),
     'Create Exam Failure': props<{ error: string }>(),
 
@@ -65,7 +65,7 @@ export const AdminExamsActions = createActionGroup({
     'Load Candidates Failure': props<{ error: string }>(),
 
     /** One or many (CSV import); saved in a single request. */
-    'Create Candidates': props<{ candidates: Omit<Candidate, 'id'>[] }>(),
+    'Create Candidates': props<{ candidates: NewCandidate[] }>(),
     'Create Candidates Success': props<{ candidates: Candidate[] }>(),
     'Create Candidates Failure': props<{ error: string }>(),
 
@@ -77,6 +77,11 @@ export const AdminExamsActions = createActionGroup({
     'Reset Candidate Attempt': props<{ id: string }>(),
     'Reset Candidate Attempt Success': props<{ candidate: Candidate }>(),
     'Reset Candidate Attempt Failure': props<{ error: string }>(),
+
+    /** Sets a new passcode (generated in the app, shown to the admin once). */
+    'Reset Candidate Passcode': props<{ id: string; passcode: string }>(),
+    'Reset Candidate Passcode Success': props<{ candidate: Candidate }>(),
+    'Reset Candidate Passcode Failure': props<{ error: string }>(),
 
     'Load All Results': emptyProps(),
 

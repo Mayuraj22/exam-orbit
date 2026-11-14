@@ -1,0 +1,27 @@
+// Candidate pages sit inside the candidate layout, which already centres them.
+.auth-card {
+  max-width: 440px;
+}
+
+.blocked {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  text-align: center;
+
+  h1 {
+    font: var(--mat-sys-title-large);
+  }
+
+  .sub {
+    margin: 0 0 16px;
+  }
+}
+
+.blocked-icon {
+  width: 48px;
+  height: 48px;
+  font-size: 48px;
+  color: var(--mat-sys-primary);
+}

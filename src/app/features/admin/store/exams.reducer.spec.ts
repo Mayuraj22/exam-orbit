@@ -1,13 +1,14 @@
 import { AdminExamsActions as A } from './exams.actions';
 import { adminExamsFeature } from './exams.reducer';
 import { initialAdminExamsState } from './exams.state';
-import { Exam } from '../../../shared/models/exam.model';
+import { DEFAULT_EXAM_SETTINGS, Exam } from '../../../shared/models/exam.model';
 import { Question } from '../../../shared/models/question.model';
 import { Candidate } from '../../../shared/models/candidate.model';
 
 const reducer = adminExamsFeature.reducer;
 
 const exam = (id: string, created_at = '2026-01-01'): Exam => ({
+  ...DEFAULT_EXAM_SETTINGS,
   id,
   title: `Exam ${id}`,
   description: null,
@@ -79,7 +80,6 @@ describe('adminExams reducer', () => {
       exam_id: 'e1',
       name,
       username: name.toLowerCase(),
-      passcode: 'ABCDEF',
       has_attempted: false,
     }));
     const state = reducer(initialAdminExamsState, A.createCandidatesSuccess({ candidates }));

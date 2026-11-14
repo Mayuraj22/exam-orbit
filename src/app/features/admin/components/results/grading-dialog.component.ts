@@ -18,12 +18,13 @@ import { Actions, ofType } from '@ngrx/effects';
 import { Store } from '@ngrx/store';
 import { AdminExamsActions } from '../../store/exams.actions';
 import {
+  selectExamDictionary,
   selectQuestions,
   selectQuestionsLoading,
   selectResultDictionary,
   selectResultsSaving,
 } from '../../store/exams.selectors';
-import { gradeResult } from '../../grading';
+import { gradeResult, passOutcome } from '../../grading';
 
 export interface GradingDialogData {
   resultId: string;
@@ -88,6 +89,14 @@ export class GradingDialogComponent {
   protected readonly pending = computed(
     () => this.answers().filter((a) => a.correct === null).length,
   );
+  private readonly examDict = this.store.selectSignal(selectExamDictionary);
+  protected readonly passMark = computed(
+    () => this.examDict()[this.data.examId]?.pass_mark ?? null,
+  );
+  protected readonly outcome = computed(() =>
+    this.answers().length ? passOutcome(this.percent(), this.passMark()) : null,
+  );
+
   protected readonly percent = computed(() =>
     this.answers().length ? Math.round((this.score() / this.answers().length) * 100) : 0,
   );
