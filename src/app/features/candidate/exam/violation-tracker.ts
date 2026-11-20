@@ -5,6 +5,8 @@ export interface ViolationRules {
   noFaceMs: number;
   /** More than one face for this long counts. */
   multipleFacesMs: number;
+  /** Face partly out of frame (or too far away) for this long counts. */
+  partialFaceMs: number;
   /** After a violation, nothing else counts for this long (one problem ≠ several warnings). */
   cooldownMs: number;
 }
@@ -12,6 +14,7 @@ export interface ViolationRules {
 export const DEFAULT_RULES: ViolationRules = {
   noFaceMs: 5000,
   multipleFacesMs: 3000,
+  partialFaceMs: 4000,
   cooldownMs: 10000,
 };
 
@@ -26,14 +29,19 @@ export const DEFAULT_RULES: ViolationRules = {
 export class ViolationTracker {
   private noFaceSince: number | null = null;
   private multipleSince: number | null = null;
+  private partialSince: number | null = null;
   private cooldownUntil = 0;
 
   constructor(private readonly rules: ViolationRules = DEFAULT_RULES) {}
 
-  /** Feed the latest face count (from detection). Returns a violation when one is due. */
-  observeFaces(faceCount: number, now: number): ViolationType | null {
+  /**
+   * Feed the latest detection: how many faces, and whether the single face is
+   * only partly in frame. Returns a violation when one is due.
+   */
+  observeFaces(faceCount: number, now: number, partial = false): ViolationType | null {
     this.noFaceSince = faceCount === 0 ? (this.noFaceSince ?? now) : null;
     this.multipleSince = faceCount > 1 ? (this.multipleSince ?? now) : null;
+    this.partialSince = faceCount === 1 && partial ? (this.partialSince ?? now) : null;
 
     if (this.multipleSince !== null && now - this.multipleSince >= this.rules.multipleFacesMs) {
       return this.trigger('multiple_faces', now);
@@ -41,12 +49,15 @@ export class ViolationTracker {
     if (this.noFaceSince !== null && now - this.noFaceSince >= this.rules.noFaceMs) {
       return this.trigger('no_face', now);
     }
+    if (this.partialSince !== null && now - this.partialSince >= this.rules.partialFaceMs) {
+      return this.trigger('face_partial', now);
+    }
     return null;
   }
 
   /** Deliberate actions count immediately (unless in the cool-down). */
   observeEvent(
-    type: Exclude<ViolationType, 'no_face' | 'multiple_faces'>,
+    type: Exclude<ViolationType, 'no_face' | 'multiple_faces' | 'face_partial'>,
     now: number,
   ): ViolationType | null {
     return this.trigger(type, now);
@@ -62,6 +73,7 @@ export class ViolationTracker {
     // Start timing afresh, so a continuing problem needs the full duration again.
     this.noFaceSince = null;
     this.multipleSince = null;
+    this.partialSince = null;
     return type;
   }
 }

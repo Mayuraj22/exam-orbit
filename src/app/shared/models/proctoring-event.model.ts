@@ -3,6 +3,7 @@ export type ProctoringEventType =
   | 'snapshot'
   | 'no_face'
   | 'multiple_faces'
+  | 'face_partial'
   | 'tab_switch'
   | 'fullscreen_exit'
   | 'camera_blocked'

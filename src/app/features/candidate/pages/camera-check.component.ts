@@ -75,6 +75,12 @@ export class CameraCheckComponent implements OnInit {
         state: 'warn',
         help: 'You can continue. Photos will still be taken for your exam admin.',
       };
+    else if (faces === 1 && this.proctoring.facePartial())
+      faceCheck = {
+        label: 'Face partly out of view',
+        state: 'warn',
+        help: 'Move so your whole face is in the centre of the picture.',
+      };
     else if (faces === 1) faceCheck = { label: 'One face in view', state: 'pass' };
     else if (faces === 0)
       faceCheck = {

@@ -42,7 +42,13 @@ export type SaveAnswerStatus = 'ok' | 'not_in_progress' | 'time_up' | 'invalid_q
 
 /** Things the proctoring layer reports. */
 export type ViolationType =
-  'no_face' | 'multiple_faces' | 'tab_switch' | 'fullscreen_exit' | 'camera_blocked' | 'copy_paste';
+  | 'no_face'
+  | 'multiple_faces'
+  | 'face_partial'
+  | 'tab_switch'
+  | 'fullscreen_exit'
+  | 'camera_blocked'
+  | 'copy_paste';
 
 export interface LogEventResult {
   status: 'ok' | 'not_in_progress' | 'invalid_event' | 'invalid_snapshot';
@@ -58,6 +64,7 @@ export interface LogEventResult {
 export const VIOLATION_MESSAGES: Record<ViolationType, string> = {
   no_face: "We can't see your face. Stay in front of the camera.",
   multiple_faces: 'More than one person is in view. Only you may be in the camera.',
+  face_partial: 'Your face is partly out of view. Sit in the centre of the camera.',
   tab_switch: 'You left the exam page. Stay on this page until you submit.',
   fullscreen_exit: 'You left fullscreen. The exam must stay in fullscreen.',
   camera_blocked: 'Your camera was turned off. Keep it on for the whole exam.',

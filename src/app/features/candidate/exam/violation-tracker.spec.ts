@@ -4,7 +4,12 @@ describe('ViolationTracker', () => {
   let tracker: ViolationTracker;
 
   beforeEach(() => {
-    tracker = new ViolationTracker({ noFaceMs: 5000, multipleFacesMs: 3000, cooldownMs: 10000 });
+    tracker = new ViolationTracker({
+      noFaceMs: 5000,
+      multipleFacesMs: 3000,
+      partialFaceMs: 4000,
+      cooldownMs: 10000,
+    });
   });
 
   it('ignores a face that disappears briefly', () => {
@@ -50,5 +55,19 @@ describe('ViolationTracker', () => {
 
   it('ignores a single snapshot of no face right after starting', () => {
     expect(tracker.observeFaces(0, 0)).toBeNull();
+  });
+
+  it('flags a face that stays partly out of frame', () => {
+    const t = new ViolationTracker();
+    expect(t.observeFaces(1, 0, true)).toBeNull();
+    expect(t.observeFaces(1, 3000, true)).toBeNull();
+    expect(t.observeFaces(1, 4000, true)).toBe('face_partial');
+  });
+
+  it('forgets a partial face once it is back in view', () => {
+    const t = new ViolationTracker();
+    t.observeFaces(1, 0, true);
+    t.observeFaces(1, 2000, false);
+    expect(t.observeFaces(1, 4500, true)).toBeNull();
   });
 });

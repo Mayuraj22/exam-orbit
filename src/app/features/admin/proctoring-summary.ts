@@ -3,6 +3,7 @@ import { ProctoringEvent, ProctoringEventType } from '../../shared/models/procto
 export const VIOLATION_TYPES = [
   'no_face',
   'multiple_faces',
+  'face_partial',
   'tab_switch',
   'fullscreen_exit',
   'camera_blocked',
@@ -17,6 +18,7 @@ export const EVENT_LABELS: Record<ProctoringEventType, string> = {
   snapshot: 'Routine photo',
   no_face: 'Face not visible',
   multiple_faces: 'More than one person',
+  face_partial: 'Face not fully visible',
   tab_switch: 'Left the exam page',
   fullscreen_exit: 'Left fullscreen',
   camera_blocked: 'Camera turned off',
@@ -29,6 +31,7 @@ export const EVENT_ICONS: Record<ProctoringEventType, string> = {
   snapshot: 'photo_camera',
   no_face: 'face_retouching_off',
   multiple_faces: 'group',
+  face_partial: 'crop_free',
   tab_switch: 'tab',
   fullscreen_exit: 'fullscreen_exit',
   camera_blocked: 'videocam_off',

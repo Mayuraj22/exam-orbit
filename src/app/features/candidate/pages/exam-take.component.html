@@ -37,6 +37,9 @@
       @if (proctored()) {
         <div class="self-view" [class.off]="proctoring.cameraState() !== 'on'">
           <video #selfView autoplay muted playsinline aria-label="Your camera"></video>
+          @if (proctoring.facePartial()) {
+            <span class="face-hint" role="status">Move into the centre</span>
+          }
           @if (violations() > 0) {
             <span class="violations" [attr.aria-label]="violations() + ' warnings'">
               {{ violations() }}

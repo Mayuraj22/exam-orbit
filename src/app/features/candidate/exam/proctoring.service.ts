@@ -41,6 +41,8 @@ export class ProctoringService implements OnDestroy {
   readonly detectorState = signal<DetectorState>('idle');
   /** Faces in the latest frame; null until detection is running. */
   readonly faceCount = signal<number | null>(null);
+  /** The single face in view is cut off by the frame edge or too far away. */
+  readonly facePartial = signal(false);
   readonly lighting = signal<Lighting>('unknown');
   readonly stream = signal<MediaStream | null>(null);
 
@@ -156,12 +158,17 @@ export class ProctoringService implements OnDestroy {
 
       if (this.detector) {
         try {
-          const faces = this.detector.detectForVideo(video, performance.now()).detections.length;
+          const detections = this.detector.detectForVideo(video, performance.now()).detections;
+          const faces = detections.length;
+          const partial =
+            faces === 1 &&
+            isPartial(detections[0].boundingBox, video.videoWidth, video.videoHeight);
           failures = 0;
           this.faceCount.set(faces);
+          this.facePartial.set(partial);
           if (this.monitoring) {
-            const violation = this.tracker.observeFaces(faces, Date.now());
-            if (violation) this.report(violation, { faces });
+            const violation = this.tracker.observeFaces(faces, Date.now(), partial);
+            if (violation) this.report(violation, { faces, partial });
           }
         } catch (error) {
           // A dropped frame isn't a problem; constant failures mean detection is broken.
@@ -227,7 +234,10 @@ export class ProctoringService implements OnDestroy {
     };
   }
 
-  private event(type: Exclude<ViolationType, 'no_face' | 'multiple_faces'>, details = {}): void {
+  private event(
+    type: Exclude<ViolationType, 'no_face' | 'multiple_faces' | 'face_partial'>,
+    details = {},
+  ): void {
     if (!this.monitoring) return;
     const violation = this.tracker.observeEvent(type, Date.now());
     if (violation) this.report(violation, details);
@@ -293,4 +303,27 @@ export class ProctoringService implements OnDestroy {
     this.stop();
     this.detector?.close();
   }
+}
+
+/** Edge margin (share of the frame) a face box may not cross. */
+const EDGE_MARGIN = 0.02;
+/** A face narrower than this share of the frame is too far away. */
+const MIN_FACE_WIDTH = 0.12;
+
+/** True when the face box touches the frame edge or the face is tiny. */
+export function isPartial(
+  box: { originX: number; originY: number; width: number; height: number } | undefined,
+  frameW: number,
+  frameH: number,
+): boolean {
+  if (!box || !frameW || !frameH) return false;
+  const mx = frameW * EDGE_MARGIN;
+  const my = frameH * EDGE_MARGIN;
+  return (
+    box.originX < mx ||
+    box.originY < my ||
+    box.originX + box.width > frameW - mx ||
+    box.originY + box.height > frameH - my ||
+    box.width < frameW * MIN_FACE_WIDTH
+  );
 }
