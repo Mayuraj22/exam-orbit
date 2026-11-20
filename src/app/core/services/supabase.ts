@@ -186,6 +186,13 @@ export class SupabaseService {
   createCandidates(people: NewCandidate[], examIds: string[] = []): Observable<Candidate[]> {
     return from(
       (async () => {
+        // Usernames are unique app-wide; other workspaces' candidates aren't visible.
+        const { data: taken } = await this.supabase.rpc('usernames_taken', {
+          p_usernames: people.map((p) => p.username),
+        });
+        if (Array.isArray(taken) && taken.length) {
+          throw new Error(`Username already taken: ${taken.join(', ')}. Choose another.`);
+        }
         const created = await this.unwrap<{ id: string }[]>(
           this.supabase.from('candidates').insert(people).select('id'),
         );

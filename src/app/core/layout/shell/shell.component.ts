@@ -102,7 +102,7 @@ export class ShellComponent {
 
   protected async signOut(): Promise<void> {
     await this.auth.signOut();
-    this.router.navigateByUrl('/login');
+    this.router.navigateByUrl('/?as=admin');
   }
 
   private readonly document = inject(DOCUMENT);

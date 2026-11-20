@@ -155,7 +155,7 @@ export class ExamTakeComponent implements OnInit {
         case 'already_attempted':
           return void this.finish('submitted');
         case 'expired':
-          return void this.router.navigateByUrl('/exam/login');
+          return void this.router.navigateByUrl('/');
         default:
           // Not assigned, not open, or another exam is still in progress.
           return void this.router.navigateByUrl('/exam/home');

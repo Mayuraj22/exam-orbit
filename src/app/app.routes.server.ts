@@ -5,6 +5,7 @@ export const serverRoutes: ServerRoute[] = [
   // never bake Supabase data into static HTML at build time.
   { path: 'admin', renderMode: RenderMode.Client },
   { path: 'admin/**', renderMode: RenderMode.Client },
+  { path: '', renderMode: RenderMode.Client },
   { path: 'login', renderMode: RenderMode.Client },
   { path: 'exam/**', renderMode: RenderMode.Client },
   { path: '**', renderMode: RenderMode.Prerender },

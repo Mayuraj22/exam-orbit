@@ -19,7 +19,7 @@ export const candidateGuard: CanActivateFn = () => {
 
   const store = inject(Store);
   const router = inject(Router);
-  const loginPage = router.createUrlTree(['/exam/login']);
+  const loginPage = router.createUrlTree(['/']);
 
   let restoreRequested = false;
   return combineLatest([

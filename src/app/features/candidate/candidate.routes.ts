@@ -1,33 +1,22 @@
 import { Routes } from '@angular/router';
-import { provideState } from '@ngrx/store';
-import { provideEffects } from '@ngrx/effects';
-import { candidateAuthFeature } from '../auth/store/auth.reducer';
-import { candidateAuthEffects } from '../auth/store/auth.effects';
+import { toLanding } from '../../core/guards/to-landing';
 import { candidateGuard } from '../../core/guards/candidate.guard';
 import { ProctoringService } from './exam/proctoring.service';
-import { OUTLINED_FORM_FIELDS } from '../../shared/form-field-defaults';
 
 /** Candidate area (/exam/...): no admin shell; its own store slice. */
 export const CANDIDATE_ROUTES: Routes = [
   {
     path: '',
     providers: [
-      provideState(candidateAuthFeature),
-      provideEffects(candidateAuthEffects),
       // One instance for the whole sitting: the camera stays on from the check into the exam.
       ProctoringService,
-      OUTLINED_FORM_FIELDS,
     ],
     loadComponent: () =>
       import('./candidate-layout.component').then((m) => m.CandidateLayoutComponent),
     children: [
-      { path: '', redirectTo: 'login', pathMatch: 'full' },
-      {
-        path: 'login',
-        loadComponent: () =>
-          import('./pages/candidate-login.component').then((m) => m.CandidateLoginComponent),
-        title: 'Sign in to your exam · ExamOrbit',
-      },
+      { path: '', redirectTo: 'home', pathMatch: 'full' },
+      // Sign-in lives on the landing page now.
+      { path: 'login', redirectTo: toLanding('candidate') },
       {
         path: 'home',
         canActivate: [candidateGuard],

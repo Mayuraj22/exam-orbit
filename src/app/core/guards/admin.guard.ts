@@ -2,7 +2,7 @@ import { inject, Injector, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { CanActivateFn, Router } from '@angular/router';
 
-/** Admin pages need a signed-in admin; otherwise go to /login and come back afterwards. */
+/** Admin pages need a signed-in admin; otherwise go to the landing page and come back afterwards. */
 export const adminGuard: CanActivateFn = async (_route, state) => {
   // Admin pages render in the browser only; the session lives there.
   if (!isPlatformBrowser(inject(PLATFORM_ID))) return true;
@@ -17,5 +17,5 @@ export const adminGuard: CanActivateFn = async (_route, state) => {
 
   return auth.isAdmin()
     ? true
-    : router.createUrlTree(['/login'], { queryParams: { returnUrl: state.url } });
+    : router.createUrlTree(['/'], { queryParams: { as: 'admin', returnUrl: state.url } });
 };

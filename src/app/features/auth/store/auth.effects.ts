@@ -56,7 +56,7 @@ export const logout$ = createEffect(
     actions$.pipe(
       ofType(CandidateAuthActions.logout),
       exhaustMap(() => from(sessions.logout().catch(() => undefined))),
-      tap(() => router.navigateByUrl('/exam/login')),
+      tap(() => router.navigateByUrl('/')),
     ),
   { functional: true, dispatch: false },
 );
