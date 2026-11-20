@@ -8,8 +8,9 @@
   display: flex;
   flex-direction: column;
   width: 248px;
+  overflow: hidden;
   border-right: none;
-  background: var(--app-nav-bg);
+  background: linear-gradient(180deg, #1e1b4b 0%, #312e81 60%, #4c1d95 100%);
   color: var(--app-nav-fg);
 
   // Material list colours, re-pointed at the navy palette
@@ -22,10 +23,27 @@
   --mat-list-list-item-hover-state-layer-opacity: 0.08;
   --mat-list-list-item-focus-state-layer-color: #ffffff;
   --mat-list-list-item-disabled-label-text-color: var(--app-nav-muted);
-  --mat-list-active-indicator-color: var(--app-nav-active-bg);
+  --mat-list-active-indicator-color: transparent;
   --mat-list-active-indicator-shape: 10px;
 
+  // soft pink glow in the bottom corner
+  &::after {
+    content: '';
+    position: absolute;
+    right: -70px;
+    bottom: -50px;
+    width: 200px;
+    height: 200px;
+    border-radius: 50%;
+    background: #db2777;
+    filter: blur(70px);
+    opacity: 0.35;
+    pointer-events: none;
+  }
+
   ::ng-deep .mat-drawer-inner-container {
+    position: relative;
+    z-index: 1;
     display: flex;
     flex-direction: column;
   }
@@ -37,6 +55,11 @@
   a[mat-list-item] {
     margin-bottom: 4px;
     border-radius: 10px;
+  }
+
+  a.mdc-list-item--activated {
+    background: linear-gradient(90deg, rgb(129 140 248 / 35%), rgb(236 72 153 / 15%));
+    box-shadow: inset 3px 0 0 #f472b6;
   }
 
   ::ng-deep .mdc-list-item--activated {
@@ -62,7 +85,8 @@
   width: 36px;
   height: 36px;
   border-radius: 10px;
-  background: var(--app-nav-active-bg);
+  background: linear-gradient(135deg, #818cf8, #ec4899);
+  box-shadow: 0 4px 14px rgb(236 72 153 / 35%);
   color: #ffffff;
 }
 
@@ -100,7 +124,8 @@
   margin: auto 12px 12px;
   padding: 10px;
   border-radius: 12px;
-  background: rgb(255 255 255 / 6%);
+  background: rgb(255 255 255 / 8%);
+  backdrop-filter: blur(6px);
 }
 
 .avatar {
@@ -110,8 +135,8 @@
   justify-content: center;
   width: 34px;
   height: 34px;
-  border-radius: 50%;
-  background: #6366f1;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #818cf8, #ec4899);
   color: #ffffff;
   font:
     600 13px / 1 Inter,
