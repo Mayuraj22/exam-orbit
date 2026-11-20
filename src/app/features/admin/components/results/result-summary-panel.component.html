@@ -1,0 +1,143 @@
+@let r = row();
+
+<!-- Who -->
+<header class="head">
+  <span class="avatar" aria-hidden="true">{{ r.initials }}</span>
+  <div class="who">
+    <div class="name-line">
+      <h2>{{ r.candidateName }}</h2>
+      <span class="badge" [attr.data-badge]="r.badge">{{ badgeLabels[r.badge] }}</span>
+    </div>
+    <p class="meta">
+      <span class="mono">{{ r.candidateUsername }}</span> ·
+      <a [routerLink]="['/admin/exams', r.exam_id]" [queryParams]="{ tab: 'results' }">{{
+        r.examTitle
+      }}</a>
+      · attempt {{ r.attempt_number }} ·
+      <span [matTooltip]="(r.submitted_at | date: 'medium') ?? ''">{{
+        r.submitted_at | date: 'MMM d, h:mm a'
+      }}</span>
+    </p>
+  </div>
+  <div class="head-actions">
+    @if (r.status === 'needs-grading') {
+      <a mat-stroked-button [routerLink]="['/admin/results', r.id]">Grade</a>
+    }
+    <a
+      mat-flat-button
+      [routerLink]="['/admin/results', r.id]"
+      [queryParams]="r.needsReview || r.violation_count ? { tab: 'proctoring' } : {}"
+    >
+      Open review
+      <mat-icon iconPositionEnd>arrow_forward</mat-icon>
+    </a>
+  </div>
+</header>
+
+<!-- Score: fraction + one dot per question -->
+<section class="score" aria-label="Score">
+  <div class="score-line">
+    <span class="fraction">
+      {{ r.score ?? '—' }}
+      @if (r.total !== null) {
+        <span class="of"> / {{ r.total }}</span>
+      }
+    </span>
+    <span class="score-label">correct answers</span>
+    @if (r.percent !== null) {
+      <span class="percent" [attr.data-badge]="r.badge">{{ r.percent }}%</span>
+    }
+  </div>
+  @if (dots().length) {
+    <ol class="dots" aria-label="Answers by question">
+      @for (d of dots(); track d.n) {
+        <li [attr.data-state]="d.state" [matTooltip]="d.tip" [attr.aria-label]="d.tip">
+          {{ d.n }}
+        </li>
+      }
+    </ol>
+  }
+</section>
+
+<!-- Four key facts -->
+<section class="facts" aria-label="Summary">
+  <div class="fact">
+    <span class="fact-label"><mat-icon aria-hidden="true">fact_check</mat-icon> Grading</span>
+    <span class="fact-value">{{ r.status === 'graded' ? 'Complete' : 'Answers to mark' }}</span>
+  </div>
+  <div class="fact">
+    <span class="fact-label"><mat-icon aria-hidden="true">flag_circle</mat-icon> Pass mark</span>
+    <span class="fact-value">{{ r.passMark !== null ? r.passMark + '%' : 'None set' }}</span>
+  </div>
+  <div class="fact" [class.amber]="r.violation_count > 0">
+    <span class="fact-label"><mat-icon aria-hidden="true">videocam</mat-icon> Proctoring</span>
+    <span class="fact-value">
+      @if (r.terminated_by_proctoring) {
+        Ended after {{ r.violation_count }} warnings
+      } @else if (r.violation_count) {
+        {{ r.violation_count }} warning{{ r.violation_count === 1 ? '' : 's' }}
+      } @else {
+        No warnings
+      }
+    </span>
+  </div>
+  <div
+    class="fact"
+    [class.red]="r.review_status === 'disqualified'"
+    [class.green]="r.review_status === 'cleared'"
+    [class.amber]="r.review_status === 'suspicious' || (!r.review_status && r.needsReview)"
+  >
+    <span class="fact-label"><mat-icon aria-hidden="true">gavel</mat-icon> Decision</span>
+    <span class="fact-value">{{ decisionLabel() }}</span>
+  </div>
+</section>
+
+@if (r.review_note) {
+  <blockquote class="note">
+    <mat-icon aria-hidden="true">sticky_note_2</mat-icon>
+    {{ r.review_note }}
+  </blockquote>
+}
+
+<!-- Proctoring preview -->
+@if (loading()) {
+  <div class="loading"><mat-spinner diameter="22" /></div>
+} @else if (summary(); as s) {
+  @if (s.violations || photos().length) {
+    <section class="proctoring" aria-label="Proctoring">
+      <div class="section-head">
+        <h3>Proctoring</h3>
+        <div class="warn-chips">
+          @for (t of s.byType; track t.type) {
+            <span class="warn-chip">{{ t.label }} · {{ t.count }}×</span>
+          }
+        </div>
+      </div>
+      <div class="photos">
+        @for (p of photos(); track p.url) {
+          <a
+            class="photo"
+            [class.violation]="p.violation"
+            [routerLink]="['/admin/results', r.id]"
+            [queryParams]="{ tab: 'proctoring' }"
+            [attr.aria-label]="p.label + ', ' + p.elapsed + ' into the exam'"
+          >
+            <img [src]="p.url" alt="" loading="lazy" />
+            <span class="photo-cap">
+              <span class="photo-label">{{ p.label }}</span>
+              <span class="photo-time">{{ p.elapsed }}</span>
+            </span>
+          </a>
+        }
+        <a
+          class="photo more"
+          [routerLink]="['/admin/results', r.id]"
+          [queryParams]="{ tab: 'proctoring' }"
+        >
+          <mat-icon aria-hidden="true">photo_library</mat-icon>
+          {{ morePhotos() ? '+' + morePhotos() + ' more' : 'View all photos' }}
+        </a>
+      </div>
+    </section>
+  }
+}

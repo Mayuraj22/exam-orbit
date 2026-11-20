@@ -7,11 +7,12 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatSelectModule } from '@angular/material/select';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { Actions, ofType } from '@ngrx/effects';
 import { Store } from '@ngrx/store';
 import { AdminExamsActions } from '../../store/exams.actions';
-import { selectCandidatesSaving } from '../../store/exams.selectors';
+import { selectCandidatesSaving, selectExams } from '../../store/exams.selectors';
 import { Credential } from './credentials-dialog.component';
 import {
   generatePasscode,
@@ -20,11 +21,13 @@ import {
 } from '../../../../shared/utils/credentials';
 
 export interface AddCandidateDialogData {
-  examId: string;
+  /** Exams to pre-select (e.g. the exam whose tab this was opened from). */
+  examIds: string[];
   /** Usernames already in use, to suggest a unique one. */
   takenUsernames: ReadonlySet<string>;
 }
 
+/** Add one person; optionally assign exams right away. Closes with their credentials. */
 @Component({
   selector: 'app-add-candidate-dialog',
   imports: [
@@ -35,6 +38,7 @@ export interface AddCandidateDialogData {
     MatIconModule,
     MatInputModule,
     MatProgressSpinnerModule,
+    MatSelectModule,
     MatTooltipModule,
   ],
   template: `
@@ -51,6 +55,12 @@ export interface AddCandidateDialogData {
             (blur)="suggestUsername()"
           />
           <mat-error>Name is required.</mat-error>
+        </mat-form-field>
+
+        <mat-form-field>
+          <mat-label>Email (optional)</mat-label>
+          <input matInput type="email" formControlName="email" autocomplete="off" />
+          <mat-error>Enter a valid email address.</mat-error>
         </mat-form-field>
 
         <mat-form-field>
@@ -78,6 +88,18 @@ export interface AddCandidateDialogData {
             <mat-icon>refresh</mat-icon>
           </button>
           <mat-hint>You'll see it once more after saving, then it's stored securely.</mat-hint>
+        </mat-form-field>
+
+        <mat-form-field>
+          <mat-label>Assign to exams (optional)</mat-label>
+          <mat-select formControlName="examIds" multiple>
+            @for (exam of exams(); track exam.id) {
+              <mat-option [value]="exam.id">
+                {{ exam.title }}{{ exam.is_published ? '' : ' (draft)' }}
+              </mat-option>
+            }
+          </mat-select>
+          <mat-hint>You can also assign exams later from the Candidates page.</mat-hint>
         </mat-form-field>
       </mat-dialog-content>
 
@@ -116,19 +138,21 @@ export class AddCandidateDialogComponent {
   private readonly dialogRef = inject(MatDialogRef<AddCandidateDialogComponent>);
   private readonly store = inject(Store);
   protected readonly saving = this.store.selectSignal(selectCandidatesSaving);
+  protected readonly exams = this.store.selectSignal(selectExams);
 
   protected readonly form = inject(NonNullableFormBuilder).group({
     name: ['', [Validators.required, Validators.maxLength(120)]],
+    email: ['', [Validators.email, Validators.maxLength(200)]],
     username: [
       '',
       [
         Validators.required,
         Validators.pattern(USERNAME_PATTERN),
-        // Synchronous "unique" check against the usernames we know about.
         (c: { value: string }) => (this.data.takenUsernames.has(c.value) ? { taken: true } : null),
       ],
     ],
     passcode: [generatePasscode()],
+    examIds: [this.data.examIds],
   });
 
   constructor() {
@@ -140,7 +164,6 @@ export class AddCandidateDialogComponent {
       });
   }
 
-  /** Fills the username from the name, unless the admin already typed one. */
   protected suggestUsername(): void {
     const { name, username } = this.form.getRawValue();
     if (name.trim() && !username) {
@@ -158,18 +181,11 @@ export class AddCandidateDialogComponent {
       this.form.markAllAsTouched();
       return;
     }
-    const { name, username, passcode } = this.form.getRawValue();
+    const { name, email, username, passcode, examIds } = this.form.getRawValue();
     this.store.dispatch(
       AdminExamsActions.createCandidates({
-        candidates: [
-          {
-            exam_id: this.data.examId,
-            name: name.trim(),
-            username,
-            passcode,
-            has_attempted: false,
-          },
-        ],
+        candidates: [{ name: name.trim(), email: email.trim() || null, username, passcode }],
+        examIds,
       }),
     );
   }

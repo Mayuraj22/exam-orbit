@@ -65,3 +65,104 @@ mat-spinner {
     color: var(--mat-sys-primary);
   }
 }
+
+/* ---------- Split layout (admin sign-in): brand panel + form ---------- */
+.auth-page.split {
+  display: grid;
+  grid-template-columns: minmax(320px, 1fr) minmax(360px, 520px);
+  align-items: stretch;
+  padding: 0;
+  background: var(--mat-sys-surface-container-low);
+
+  .auth-card {
+    align-self: center;
+    justify-self: center;
+    margin: 24px;
+    box-shadow: 0 10px 30px rgb(30 27 75 / 8%);
+  }
+
+  // The panel already shows the brand on wide screens.
+  .auth-card .brand {
+    display: none;
+  }
+}
+
+.brand-panel {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 40px 48px;
+  background: #1e1b4b;
+  color: #c7d2fe;
+
+  .brand-mark {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font:
+      600 20px / 1 Inter,
+      Roboto,
+      sans-serif;
+    color: #ffffff;
+
+    mat-icon {
+      padding: 6px;
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      background: #4338ca;
+      font-size: 24px;
+    }
+  }
+
+  h2 {
+    max-width: 420px;
+    margin: 0 0 24px;
+    font:
+      700 32px / 1.2 Inter,
+      Roboto,
+      sans-serif;
+    letter-spacing: -0.02em;
+    color: #ffffff;
+  }
+
+  ul {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  li {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 15px;
+
+    mat-icon {
+      color: #a5b4fc;
+    }
+  }
+
+  .foot {
+    margin: 0;
+    font-size: 13px;
+    color: #818cf8;
+  }
+}
+
+@media (max-width: 860px) {
+  .auth-page.split {
+    grid-template-columns: 1fr;
+
+    .auth-card .brand {
+      display: flex;
+    }
+  }
+
+  .brand-panel {
+    display: none;
+  }
+}

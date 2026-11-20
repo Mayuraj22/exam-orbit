@@ -7,6 +7,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { AdminAuthService, AdminSignInResult } from '../services/admin-auth.service';
+import { OUTLINED_FORM_FIELDS } from '../../shared/form-field-defaults';
 
 const MESSAGES: Record<Exclude<AdminSignInResult, 'ok'>, string> = {
   invalid: "That email or password isn't right.",
@@ -26,7 +27,19 @@ const MESSAGES: Record<Exclude<AdminSignInResult, 'ok'>, string> = {
     MatProgressSpinnerModule,
   ],
   template: `
-    <main class="auth-page">
+    <main class="auth-page split">
+      <aside class="brand-panel" aria-hidden="true">
+        <div class="brand-mark"><mat-icon>public</mat-icon> ExamOrbit</div>
+        <div class="pitch">
+          <h2>Run fair online exams with confidence.</h2>
+          <ul>
+            <li><mat-icon>assignment</mat-icon> Build exams and question banks</li>
+            <li><mat-icon>groups</mat-icon> Assign candidates in bulk</li>
+            <li><mat-icon>videocam</mat-icon> Webcam proctoring with review</li>
+          </ul>
+        </div>
+        <p class="foot">ExamOrbit admin console</p>
+      </aside>
       <div class="auth-card">
         <div class="brand"><mat-icon aria-hidden="true">public</mat-icon> ExamOrbit</div>
         <h1>Admin sign in</h1>
@@ -86,6 +99,7 @@ const MESSAGES: Record<Exclude<AdminSignInResult, 'ok'>, string> = {
     </main>
   `,
   styleUrl: '../../shared/styles/auth-page.scss',
+  providers: [OUTLINED_FORM_FIELDS],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AdminLoginComponent implements OnInit {

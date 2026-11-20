@@ -17,7 +17,7 @@
           <span
             class="status-chip"
             [class.published]="exam.is_published"
-            [class.draft]="!exam.is_published"
+            [class.neutral]="!exam.is_published"
           >
             {{ exam.is_published ? 'Published' : 'Draft' }}
           </span>

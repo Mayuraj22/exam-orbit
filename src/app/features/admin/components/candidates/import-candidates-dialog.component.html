@@ -2,8 +2,9 @@
 
 <mat-dialog-content>
   <p class="intro">
-    Use a CSV file whose first row is <code>name,username</code>. The username is optional and will
-    be generated from the name if empty. Every candidate gets a new passcode.
+    Use a CSV file whose first row is <code>name,username,email</code>. Username and email are
+    optional; the username and will be generated from the name if empty. Every candidate gets a new
+    passcode.
   </p>
 
   <div class="file-row">
@@ -27,6 +28,17 @@
     </div>
   }
 
+  <mat-form-field class="exam-picker" subscriptSizing="dynamic">
+    <mat-label>Assign everyone to exams (optional)</mat-label>
+    <mat-select multiple [ngModel]="examIds()" (ngModelChange)="examIds.set($event)">
+      @for (exam of exams(); track exam.id) {
+        <mat-option [value]="exam.id">
+          {{ exam.title }}{{ exam.is_published ? '' : ' (draft)' }}
+        </mat-option>
+      }
+    </mat-select>
+  </mat-form-field>
+
   @if (rows().length) {
     <p class="summary" aria-live="polite">
       <strong>{{ validRows().length }}</strong> ready to import
@@ -42,6 +54,7 @@
             <th>Line</th>
             <th>Name</th>
             <th>Username</th>
+            <th>Email</th>
             <th>Status</th>
           </tr>
         </thead>
@@ -51,6 +64,7 @@
               <td>{{ row.line }}</td>
               <td>{{ row.name || '—' }}</td>
               <td class="mono">{{ row.username || '—' }}</td>
+              <td>{{ row.email || '—' }}</td>
               <td>
                 @if (row.error) {
                   <span class="bad"><mat-icon inline>error</mat-icon> {{ row.error }}</span>

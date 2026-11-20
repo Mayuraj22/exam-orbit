@@ -4,11 +4,11 @@ import {
 } from '../../../shared/models/candidate-session.model';
 
 export interface CandidateAuthState {
-  /** Candidate + exam details (also kept for "already attempted" / "not open" screens). */
+  /** The signed-in candidate. */
   session: CandidateSessionInfo | null;
   /** Last answer from the server; null before any attempt. */
   status: CandidateLoginStatus | null;
-  /** True only with a valid session that may start the exam. */
+  /** True with a valid session. */
   isAuthenticated: boolean;
   loading: boolean;
   /** Network/server error message (wrong passcodes use `status` instead). */

@@ -14,7 +14,7 @@ import { MatIconModule } from '@angular/material/icon';
       </mat-icon>
       <h1>{{ content().title }}</h1>
       <p class="sub">{{ content().message }}</p>
-      <a mat-stroked-button routerLink="/exam/login">Done</a>
+      <a mat-flat-button routerLink="/exam/home">Back to my exams</a>
     </div>
   `,
   styleUrls: ['../../../shared/styles/auth-page.scss', './candidate-pages.scss'],

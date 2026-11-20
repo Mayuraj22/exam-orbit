@@ -5,23 +5,11 @@ import { CandidateLoginResult } from '../../../shared/models/candidate-session.m
 
 const reducer = candidateAuthFeature.reducer;
 
-const info = {
-  candidate: { id: 'c1', name: 'Priya Sharma', username: 'priya.sharma' },
-  exam: {
-    id: 'e1',
-    title: 'JS basics',
-    description: null,
-    duration_minutes: 60,
-    pass_mark: 60,
-    camera_required: true,
-    max_warnings: 2,
-    question_count: 20,
-  },
-};
+const candidate = { id: 'c1', name: 'Priya Sharma', username: 'priya.sharma' };
 
 describe('candidateAuth reducer', () => {
   it('signs in on an ok result', () => {
-    const result: CandidateLoginResult = { status: 'ok', token: 't', ...info };
+    const result: CandidateLoginResult = { status: 'ok', token: 't', candidate };
     let state = reducer(initialCandidateAuthState, A.login({ username: 'u', passcode: 'p' }));
     expect(state.loading).toBe(true);
 
@@ -41,13 +29,13 @@ describe('candidateAuth reducer', () => {
     expect(state.session).toBeNull();
   });
 
-  it('keeps exam details for "already attempted" but does not sign in', () => {
+  it('stays signed out when locked out', () => {
     const state = reducer(
       initialCandidateAuthState,
-      A.loginResult({ result: { status: 'already_attempted', ...info } }),
+      A.loginResult({ result: { status: 'too_many_attempts' } }),
     );
     expect(state.isAuthenticated).toBe(false);
-    expect(state.session?.exam.title).toBe('JS basics');
+    expect(state.status).toBe('too_many_attempts');
   });
 
   it('marks the session as checked when there was nothing to restore', () => {
@@ -65,7 +53,7 @@ describe('candidateAuth reducer', () => {
   it('clears everything on logout', () => {
     let state = reducer(
       initialCandidateAuthState,
-      A.loginResult({ result: { status: 'ok', token: 't', ...info } }),
+      A.loginResult({ result: { status: 'ok', token: 't', candidate } }),
     );
     state = reducer(state, A.logout());
     expect(state.isAuthenticated).toBe(false);

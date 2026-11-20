@@ -8,7 +8,9 @@ import { MatIconModule } from '@angular/material/icon';
   imports: [RouterOutlet, MatIconModule],
   template: `
     <header class="bar">
-      <span class="brand"><mat-icon aria-hidden="true">public</mat-icon> ExamOrbit</span>
+      <span class="brand"
+        ><span class="logo" aria-hidden="true"><mat-icon>public</mat-icon></span> ExamOrbit</span
+      >
     </header>
     <main class="content">
       <router-outlet />
@@ -31,9 +33,27 @@ import { MatIconModule } from '@angular/material/icon';
     .brand {
       display: flex;
       align-items: center;
-      gap: 8px;
-      font: var(--mat-sys-title-medium);
-      color: var(--mat-sys-primary);
+      gap: 10px;
+      font:
+        600 17px / 1 Inter,
+        Roboto,
+        sans-serif;
+      color: var(--mat-sys-on-surface);
+    }
+    .logo {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 32px;
+      height: 32px;
+      border-radius: 9px;
+      background: #4338ca;
+      color: #ffffff;
+    }
+    .logo mat-icon {
+      width: 20px;
+      height: 20px;
+      font-size: 20px;
     }
     .content {
       flex: 1;

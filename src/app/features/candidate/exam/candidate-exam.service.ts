@@ -1,5 +1,6 @@
 import { inject, Injectable } from '@angular/core';
 import { SupabaseService } from '../../../core/services/supabase';
+import { AssignedExam } from '../../../shared/models/candidate-session.model';
 import { CandidateSessionService } from '../../auth/candidate-session.service';
 import {
   LogEventResult,
@@ -25,9 +26,17 @@ export class CandidateExamService {
     return token;
   }
 
-  async start(): Promise<StartExamResult> {
+  /** The candidate's assigned exams ("My exams"). */
+  async myExams(): Promise<{ status: 'ok' | 'expired'; exams?: AssignedExam[] }> {
+    const { data, error } = await this.supabase.rpc('candidate_exams', { p_token: this.token });
+    if (error) throw error;
+    return data as { status: 'ok' | 'expired'; exams?: AssignedExam[] };
+  }
+
+  async start(examId: string): Promise<StartExamResult> {
     const { data, error } = await this.supabase.rpc('candidate_start_exam', {
       p_token: this.token,
+      p_exam_id: examId,
     });
     if (error) throw error;
     return data as StartExamResult;

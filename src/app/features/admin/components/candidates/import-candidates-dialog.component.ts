@@ -1,4 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { FormsModule } from '@angular/forms';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatSelectModule } from '@angular/material/select';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
@@ -7,7 +10,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { Actions, ofType } from '@ngrx/effects';
 import { Store } from '@ngrx/store';
 import { AdminExamsActions } from '../../store/exams.actions';
-import { selectCandidatesSaving } from '../../store/exams.selectors';
+import { selectCandidatesSaving, selectExams } from '../../store/exams.selectors';
 import { downloadCsv, parseCsv } from '../../../../shared/utils/csv';
 import { Credential } from './credentials-dialog.component';
 import {
@@ -17,7 +20,8 @@ import {
 } from '../../../../shared/utils/credentials';
 
 export interface ImportCandidatesDialogData {
-  examId: string;
+  /** Exams to pre-select for everyone imported. */
+  examIds: string[];
   takenUsernames: ReadonlySet<string>;
 }
 
@@ -25,6 +29,7 @@ interface PreviewRow {
   line: number;
   name: string;
   username: string;
+  email: string | null;
   passcode: string;
   error: string | null;
 }
@@ -32,12 +37,20 @@ interface PreviewRow {
 const MAX_ROWS = 500;
 
 /**
- * Import candidates from a CSV with a `name` column and optional `username`.
+ * Import candidates from a CSV with a `name` column and optional `username` and `email`.
  * Shows a preview with per-row validation; only valid rows are imported.
  */
 @Component({
   selector: 'app-import-candidates-dialog',
-  imports: [MatDialogModule, MatButtonModule, MatIconModule, MatProgressSpinnerModule],
+  imports: [
+    FormsModule,
+    MatDialogModule,
+    MatButtonModule,
+    MatFormFieldModule,
+    MatIconModule,
+    MatProgressSpinnerModule,
+    MatSelectModule,
+  ],
   templateUrl: './import-candidates-dialog.component.html',
   styleUrl: './import-candidates-dialog.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -47,6 +60,9 @@ export class ImportCandidatesDialogComponent {
   private readonly dialogRef = inject(MatDialogRef<ImportCandidatesDialogComponent>);
   private readonly store = inject(Store);
   protected readonly saving = this.store.selectSignal(selectCandidatesSaving);
+  protected readonly exams = this.store.selectSignal(selectExams);
+  /** Exams everyone in the file is assigned to. */
+  protected readonly examIds = signal<string[]>(this.data.examIds);
 
   protected readonly fileName = signal<string | null>(null);
   protected readonly fileError = signal<string | null>(null);
@@ -71,7 +87,7 @@ export class ImportCandidatesDialogComponent {
   protected downloadTemplate(): void {
     downloadCsv(
       'candidates-template.csv',
-      'name,username\r\nPriya Sharma,priya.sharma\r\nAlex Chen,\r\n',
+      'name,username,email\r\nPriya Sharma,priya.sharma,priya@example.com\r\nAlex Chen,,\r\n',
     );
   }
 
@@ -106,9 +122,10 @@ export class ImportCandidatesDialogComponent {
     const header = table[0].map((h) => h.trim().toLowerCase());
     const nameCol = header.indexOf('name');
     const userCol = header.indexOf('username');
+    const emailCol = header.indexOf('email');
     if (nameCol === -1) {
       this.fileError.set(
-        'The first row must be a header with a "name" column (and optionally "username").',
+        'The first row must be a header with a "name" column (and optionally "username" and "email").',
       );
       return [];
     }
@@ -126,9 +143,11 @@ export class ImportCandidatesDialogComponent {
     return body.map((cells, i) => {
       const name = (cells[nameCol] ?? '').trim();
       let username = (userCol >= 0 ? (cells[userCol] ?? '') : '').trim().toLowerCase();
+      const email = (emailCol >= 0 ? (cells[emailCol] ?? '') : '').trim() || null;
       let error: string | null = null;
 
       if (!name) error = 'Name is missing';
+      else if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) error = 'Invalid email';
       else if (name.length > 120) error = 'Name is too long';
 
       if (!error) {
@@ -138,18 +157,28 @@ export class ImportCandidatesDialogComponent {
       }
       if (!error) taken.add(username);
 
-      return { line: i + 2, name, username, passcode: error ? '' : generatePasscode(), error };
+      return {
+        line: i + 2,
+        name,
+        username,
+        email,
+        passcode: error ? '' : generatePasscode(),
+        error,
+      };
     });
   }
 
   protected import(): void {
     const candidates = this.validRows().map((r) => ({
-      exam_id: this.data.examId,
       name: r.name,
       username: r.username,
+      email: r.email,
       passcode: r.passcode,
-      has_attempted: false,
     }));
-    if (candidates.length) this.store.dispatch(AdminExamsActions.createCandidates({ candidates }));
+    if (candidates.length) {
+      this.store.dispatch(
+        AdminExamsActions.createCandidates({ candidates, examIds: this.examIds() }),
+      );
+    }
   }
 }

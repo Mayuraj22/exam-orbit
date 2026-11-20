@@ -14,10 +14,10 @@ import {
 import { Clipboard } from '@angular/cdk/clipboard';
 import { MatDialog } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
+import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
-import { MatInputModule } from '@angular/material/input';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatPaginator, MatPaginatorModule } from '@angular/material/paginator';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
@@ -28,6 +28,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { RouterLink } from '@angular/router';
 import { Actions, ofType } from '@ngrx/effects';
 import { Store } from '@ngrx/store';
+import { initials } from '../../../../shared/utils/relative-date';
 import { filter, take, takeUntil } from 'rxjs';
 import { AdminExamsActions } from '../../store/exams.actions';
 import {
@@ -38,10 +39,11 @@ import {
   selectExamDictionary,
   selectExams,
 } from '../../store/exams.selectors';
-import { Candidate } from '../../../../shared/models/candidate.model';
+import { assignmentFor, Candidate } from '../../../../shared/models/candidate.model';
 import { ConfirmService } from '../../../../shared/components/confirm-dialog/confirm.service';
 import { NotificationService } from '../../../../core/services/notification.service';
 import { downloadCsv, slugify, toCsv } from '../../../../shared/utils/csv';
+import { generatePasscode } from '../../../../shared/utils/credentials';
 import {
   AddCandidateDialogComponent,
   AddCandidateDialogData,
@@ -55,28 +57,41 @@ import {
   CredentialsDialogComponent,
   CredentialsDialogData,
 } from './credentials-dialog.component';
-import { generatePasscode } from '../../../../shared/utils/credentials';
+import { AssignExamsDialogComponent, AssignExamsDialogData } from './assign-exams-dialog.component';
+import {
+  AssignExistingDialogComponent,
+  AssignExistingDialogData,
+} from './assign-existing-dialog.component';
 
-/** A candidate plus its exam title, for display, sorting and filtering. */
+/** Exam filter on the all-candidates page. */
+type ExamFilter = 'all' | 'unassigned' | string;
+
+interface AssignedExam {
+  examId: string;
+  title: string;
+  attempted: boolean;
+}
+
 interface CandidateRow extends Candidate {
-  examTitle: string;
-  status: 'attempted' | 'not-started';
+  exams: AssignedExam[];
+  /** In an exam's tab: this exam's status. */
+  attempted: boolean;
 }
 
 /**
- * Candidates table. With `examId` it shows one exam's candidates (exam detail tab)
- * and allows adding/importing; without it, every candidate with an exam filter
- * (sidebar Candidates page).
+ * Candidates table with multi-select and bulk actions.
+ * - Without `examId` (Candidates page): every person and the exams assigned to them.
+ * - With `examId` (exam's Candidates tab): only people assigned to that exam.
  */
 @Component({
   selector: 'app-candidates-table',
   imports: [
     RouterLink,
     MatButtonModule,
+    MatCheckboxModule,
     MatDividerModule,
     MatFormFieldModule,
     MatIconModule,
-    MatInputModule,
     MatMenuModule,
     MatPaginatorModule,
     MatProgressBarModule,
@@ -90,7 +105,8 @@ interface CandidateRow extends Candidate {
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class CandidatesTableComponent implements OnInit, AfterViewInit {
-  /** Limit to one exam; omit to show every exam's candidates. */
+  protected readonly initials = initials;
+  /** Limit to one exam's candidates; omit for everyone. */
   readonly examId = input<string>();
 
   private readonly store = inject(Store);
@@ -100,7 +116,6 @@ export class CandidatesTableComponent implements OnInit, AfterViewInit {
   private readonly notify = inject(NotificationService);
   private readonly actions$ = inject(Actions);
 
-  /** Where candidates sign in; shared in copied details. */
   protected readonly loginUrl = `${inject(DOCUMENT).location.origin}/exam/login`;
 
   private readonly sort = viewChild(MatSort);
@@ -113,65 +128,97 @@ export class CandidatesTableComponent implements OnInit, AfterViewInit {
   protected readonly saving = this.store.selectSignal(selectCandidatesSaving);
   protected readonly error = this.store.selectSignal(selectCandidatesError);
 
-  protected readonly allExamsMode = computed(() => !this.examId());
-  /** Exam that Add/Import apply to: this tab's exam, or the one picked in the filter. */
-  protected readonly targetExamId = computed(() => {
-    const filter = this.examFilter();
-    return this.examId() ?? (filter !== 'all' ? filter : null);
-  });
+  protected readonly examMode = computed(() => !!this.examId());
   protected readonly search = signal('');
-  /** Exam filter, only used in all-exams mode. */
-  protected readonly examFilter = signal<string>('all');
+  protected readonly examFilter = signal<ExamFilter>('all');
+  protected readonly selected = signal<ReadonlySet<string>>(new Set());
 
   protected readonly rows = computed<CandidateRow[]>(() => {
     const dict = this.examDict();
     const examId = this.examId();
     const examFilter = this.examFilter();
     return this.candidates()
-      .filter((c) =>
-        examId ? c.exam_id === examId : examFilter === 'all' || c.exam_id === examFilter,
-      )
+      .filter((c) => {
+        if (examId) return !!assignmentFor(c, examId);
+        if (examFilter === 'unassigned') return c.assignments.length === 0;
+        if (examFilter !== 'all') return !!assignmentFor(c, examFilter);
+        return true;
+      })
       .map((c) => ({
         ...c,
-        examTitle: dict[c.exam_id]?.title ?? 'Unknown exam',
-        status: c.has_attempted ? 'attempted' : 'not-started',
+        exams: c.assignments
+          .map((a) => ({
+            examId: a.exam_id,
+            title: dict[a.exam_id]?.title ?? 'Unknown exam',
+            attempted: a.has_attempted,
+          }))
+          .sort((a, b) => a.title.localeCompare(b.title)),
+        attempted: examId ? !!assignmentFor(c, examId)?.has_attempted : false,
       }));
   });
 
   protected readonly stats = computed(() => {
     const rows = this.rows();
-    const attempted = rows.filter((r) => r.has_attempted).length;
-    return { total: rows.length, attempted, notStarted: rows.length - attempted };
+    if (this.examMode()) {
+      const attempted = rows.filter((r) => r.attempted).length;
+      return [
+        { label: 'assigned', value: rows.length },
+        { label: 'attempted', value: attempted },
+        { label: 'not started', value: rows.length - attempted },
+      ];
+    }
+    return [
+      { label: 'candidates', value: rows.length },
+      { label: 'without an exam', value: rows.filter((r) => !r.exams.length).length },
+    ];
   });
 
   protected readonly displayedColumns = computed(() =>
-    this.allExamsMode()
-      ? ['name', 'username', 'exam', 'status', 'actions']
-      : ['name', 'username', 'status', 'actions'],
+    this.examMode()
+      ? ['select', 'name', 'username', 'status', 'actions']
+      : ['select', 'name', 'username', 'exams', 'actions'],
   );
 
   protected readonly dataSource = new MatTableDataSource<CandidateRow>([]);
 
+  /** Selected candidates that are still in the current (filtered) list. */
+  protected readonly selectedRows = computed(() =>
+    this.rows().filter((r) => this.selected().has(r.id)),
+  );
+  private readonly visibleIds = signal<string[]>([]);
+  protected readonly allVisibleSelected = computed(
+    () => this.visibleIds().length > 0 && this.visibleIds().every((id) => this.selected().has(id)),
+  );
+  protected readonly someVisibleSelected = computed(
+    () => !this.allVisibleSelected() && this.visibleIds().some((id) => this.selected().has(id)),
+  );
+
   constructor() {
-    // Search across the visible text columns.
     this.dataSource.filterPredicate = (row, term) =>
-      [row.name, row.username, row.examTitle].some((v) => v.toLowerCase().includes(term));
+      [row.name, row.username, row.email ?? ''].some((v) => v.toLowerCase().includes(term));
 
     effect(() => {
       this.dataSource.data = this.rows();
+      this.visibleIds.set(this.dataSource.filteredData.map((r) => r.id));
     });
     effect(() => {
       this.dataSource.filter = this.search().trim().toLowerCase();
       this.dataSource.paginator?.firstPage();
+      this.visibleIds.set(this.dataSource.filteredData.map((r) => r.id));
+    });
+    // Forget selections of people no longer in the list (deleted, filtered by exam…).
+    effect(() => {
+      const ids = new Set(this.rows().map((r) => r.id));
+      const current = this.selected();
+      if ([...current].some((id) => !ids.has(id))) {
+        this.selected.set(new Set([...current].filter((id) => ids.has(id))));
+      }
     });
   }
 
   ngOnInit(): void {
     this.reload();
-    // Exam titles are needed for the exam column / filter.
-    if (this.allExamsMode() && this.exams().length === 0) {
-      this.store.dispatch(AdminExamsActions.loadExams());
-    }
+    if (this.exams().length === 0) this.store.dispatch(AdminExamsActions.loadExams());
   }
 
   ngAfterViewInit(): void {
@@ -180,140 +227,228 @@ export class CandidatesTableComponent implements OnInit, AfterViewInit {
   }
 
   protected reload(): void {
-    this.store.dispatch(AdminExamsActions.loadCandidates({ examId: this.examId() }));
+    this.store.dispatch(AdminExamsActions.loadCandidates());
+  }
+
+  // --- Selection ---------------------------------------------------------------
+
+  protected toggle(id: string): void {
+    const next = new Set(this.selected());
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    this.selected.set(next);
+  }
+
+  /** Selects every candidate matching the current search and filters (all pages). */
+  protected toggleAllVisible(): void {
+    const next = new Set(this.selected());
+    const all = this.allVisibleSelected();
+    for (const id of this.visibleIds()) {
+      if (all) next.delete(id);
+      else next.add(id);
+    }
+    this.selected.set(next);
+  }
+
+  protected clearSelection(): void {
+    this.selected.set(new Set());
   }
 
   private takenUsernames(): ReadonlySet<string> {
     return new Set(this.candidates().map((c) => c.username));
   }
 
+  private examTitle(examId: string | undefined): string {
+    return (examId && this.examDict()[examId]?.title) || 'your exams';
+  }
+
+  // --- Adding ------------------------------------------------------------------
+
   protected openAdd(): void {
-    const examId = this.targetExamId();
-    if (!examId) return;
+    const examId = this.examId();
     this.dialog
       .open<AddCandidateDialogComponent, AddCandidateDialogData, Credential>(
         AddCandidateDialogComponent,
         {
-          data: { examId, takenUsernames: this.takenUsernames() },
-          width: '480px',
+          data: { examIds: examId ? [examId] : [], takenUsernames: this.takenUsernames() },
+          width: '520px',
           maxWidth: '94vw',
         },
       )
       .afterClosed()
       .subscribe((created) => {
-        if (created) this.showCredentials('Candidate added', [created], examId);
+        if (created) this.showCredentials('Candidate added', [created]);
       });
   }
 
   protected openImport(): void {
-    const examId = this.targetExamId();
-    if (!examId) return;
+    const examId = this.examId();
     this.dialog
       .open<ImportCandidatesDialogComponent, ImportCandidatesDialogData, Credential[]>(
         ImportCandidatesDialogComponent,
         {
-          data: { examId, takenUsernames: this.takenUsernames() },
-          width: '720px',
+          data: { examIds: examId ? [examId] : [], takenUsernames: this.takenUsernames() },
+          width: '760px',
           maxWidth: '94vw',
         },
       )
       .afterClosed()
       .subscribe((created) => {
-        if (created?.length) {
-          this.showCredentials(`${created.length} candidates imported`, created, examId);
-        }
+        if (created?.length) this.showCredentials(`${created.length} candidates imported`, created);
       });
   }
 
+  /** Exam tab: pick people who already exist. */
+  protected openAssignExisting(): void {
+    const examId = this.examId();
+    if (!examId) return;
+    this.dialog.open<AssignExistingDialogComponent, AssignExistingDialogData>(
+      AssignExistingDialogComponent,
+      { data: { examId, examTitle: this.examTitle(examId) }, width: '560px', maxWidth: '94vw' },
+    );
+  }
+
   /** The one and only time new passcodes are shown. */
-  private showCredentials(title: string, credentials: Credential[], examId: string): void {
+  private showCredentials(title: string, credentials: Credential[]): void {
     this.dialog.open<CredentialsDialogComponent, CredentialsDialogData>(
       CredentialsDialogComponent,
       {
-        data: { title, credentials, examTitle: this.examDict()[examId]?.title ?? 'Exam' },
+        data: { title, credentials, examTitle: this.examTitle(this.examId()) },
         width: '640px',
         maxWidth: '94vw',
       },
     );
   }
 
-  /** Lost passcode: make a new one, save it (hashed), and show it once. */
-  protected resetPasscode(c: CandidateRow): void {
+  // --- Bulk and row actions ----------------------------------------------------
+
+  protected assignExams(ids: string[]): void {
+    this.dialog.open<AssignExamsDialogComponent, AssignExamsDialogData>(
+      AssignExamsDialogComponent,
+      {
+        data: { candidateIds: ids },
+        width: '480px',
+        maxWidth: '94vw',
+      },
+    );
+  }
+
+  protected removeFromExam(rows: CandidateRow[]): void {
+    const examId = this.examId();
+    if (!examId || !rows.length) return;
+    const who = rows.length === 1 ? rows[0].name : `${rows.length} candidates`;
     this.confirm
       .ask({
-        title: 'Reset passcode?',
-        message: `${c.name}'s current passcode will stop working. You'll see the new one once and need to send it to them.`,
-        confirmText: 'Reset passcode',
+        title: 'Remove from this exam?',
+        message: `${who} will no longer see "${this.examTitle(examId)}". Results already submitted are kept. They stay on the Candidates page.`,
+        confirmText: 'Remove from exam',
       })
       .pipe(filter(Boolean))
       .subscribe(() => {
-        const passcode = generatePasscode();
-        // Show it only once the database has saved it.
-        this.actions$
-          .pipe(
-            ofType(AdminExamsActions.resetCandidatePasscodeSuccess),
-            filter(({ candidate }) => candidate.id === c.id),
-            take(1),
-            takeUntil(this.actions$.pipe(ofType(AdminExamsActions.resetCandidatePasscodeFailure))),
-          )
-          .subscribe(() =>
-            this.showCredentials(
-              'New passcode',
-              [{ name: c.name, username: c.username, passcode }],
-              c.exam_id,
-            ),
-          );
-        this.store.dispatch(AdminExamsActions.resetCandidatePasscode({ id: c.id, passcode }));
+        this.store.dispatch(
+          AdminExamsActions.unassignCandidates({ candidateIds: rows.map((r) => r.id), examId }),
+        );
+        this.clearSelection();
       });
   }
 
-  /** Copies sign-in details without the passcode (it's stored hashed and can't be shown). */
+  protected resetPasscodes(rows: CandidateRow[]): void {
+    if (!rows.length) return;
+    const who = rows.length === 1 ? `${rows[0].name}'s passcode` : `${rows.length} passcodes`;
+    this.confirm
+      .ask({
+        title: rows.length === 1 ? 'Reset passcode?' : 'Reset passcodes?',
+        message: `${who} will stop working. You'll see the new ${rows.length === 1 ? 'one' : 'ones'} once and need to send ${rows.length === 1 ? 'it' : 'them'} out.`,
+        confirmText: 'Reset',
+      })
+      .pipe(filter(Boolean))
+      .subscribe(() => {
+        const items = rows.map((r) => ({ id: r.id, passcode: generatePasscode() }));
+        this.actions$
+          .pipe(
+            ofType(AdminExamsActions.resetCandidatePasscodesSuccess),
+            take(1),
+            takeUntil(this.actions$.pipe(ofType(AdminExamsActions.resetCandidatePasscodesFailure))),
+          )
+          .subscribe(() =>
+            this.showCredentials(
+              rows.length === 1 ? 'New passcode' : `${rows.length} new passcodes`,
+              rows.map((r, i) => ({
+                name: r.name,
+                username: r.username,
+                passcode: items[i].passcode,
+              })),
+            ),
+          );
+        this.store.dispatch(AdminExamsActions.resetCandidatePasscodes({ items }));
+      });
+  }
+
+  protected resetAttempt(row: CandidateRow): void {
+    const examId = this.examId();
+    if (!examId) return;
+    this.confirm
+      .ask({
+        title: 'Reset attempt?',
+        message: `${row.name} will be able to take "${this.examTitle(examId)}" again. Their previous result is kept.`,
+        confirmText: 'Reset attempt',
+      })
+      .pipe(filter(Boolean))
+      .subscribe(() =>
+        this.store.dispatch(AdminExamsActions.resetCandidateAttempt({ id: row.id, examId })),
+      );
+  }
+
+  protected deleteCandidates(rows: CandidateRow[]): void {
+    if (!rows.length) return;
+    const who =
+      rows.length === 1 ? `${rows[0].name} (${rows[0].username})` : `${rows.length} candidates`;
+    this.confirm
+      .ask({
+        title: rows.length === 1 ? 'Delete candidate?' : `Delete ${rows.length} candidates?`,
+        message: `${who} will be removed from every exam and can no longer sign in. Their results are deleted too. This can't be undone.`,
+        confirmText: 'Delete',
+        destructive: true,
+      })
+      .pipe(filter(Boolean))
+      .subscribe(() => {
+        this.store.dispatch(AdminExamsActions.deleteCandidates({ ids: rows.map((r) => r.id) }));
+        this.clearSelection();
+      });
+  }
+
+  /** Sign-in details without the passcode (stored hashed, can't be shown). */
   protected copyCredentials(c: CandidateRow): void {
     const ok = this.clipboard.copy(
       [
-        `Exam: ${c.examTitle}`,
         `Sign in at: ${this.loginUrl}`,
         `Username: ${c.username}`,
         'Passcode: sent separately',
-      ].join('\n'),
+        c.exams.length ? `Exams: ${c.exams.map((e) => e.title).join(', ')}` : '',
+      ]
+        .filter(Boolean)
+        .join('\n'),
     );
     if (ok) this.notify.success(`Sign-in details for ${c.name} copied (without passcode)`);
     else this.notify.error("Couldn't copy to the clipboard");
   }
 
-  protected resetAttempt(c: CandidateRow): void {
-    this.confirm
-      .ask({
-        title: 'Reset attempt?',
-        message: `${c.name} will be able to take "${c.examTitle}" again. Their previous result is kept.`,
-        confirmText: 'Reset attempt',
-      })
-      .pipe(filter(Boolean))
-      .subscribe(() => this.store.dispatch(AdminExamsActions.resetCandidateAttempt({ id: c.id })));
-  }
-
-  protected remove(c: CandidateRow): void {
-    this.confirm
-      .ask({
-        title: 'Remove candidate?',
-        message: `${c.name} (${c.username}) will no longer be able to log in. This can't be undone.`,
-        confirmText: 'Remove',
-        destructive: true,
-      })
-      .pipe(filter(Boolean))
-      .subscribe(() => this.store.dispatch(AdminExamsActions.deleteCandidate({ id: c.id })));
-  }
-
-  /** Exports what's currently shown (after search/filter). Passcodes are stored hashed, so they aren't included. */
+  /** Exports the selected candidates, or everyone shown if none are selected. */
   protected exportCsv(): void {
-    const rows = this.dataSource.filteredData;
+    const rows = this.selectedRows().length ? this.selectedRows() : this.dataSource.filteredData;
     const csv = toCsv(rows, [
       { header: 'Name', value: (r) => r.name },
       { header: 'Username', value: (r) => r.username },
-      { header: 'Exam', value: (r) => r.examTitle },
-      { header: 'Status', value: (r) => (r.has_attempted ? 'Attempted' : 'Not started') },
+      { header: 'Email', value: (r) => r.email ?? '' },
+      {
+        header: 'Exams',
+        value: (r) =>
+          r.exams.map((e) => `${e.title}${e.attempted ? ' (attempted)' : ''}`).join('; '),
+      },
     ]);
-    const exam = this.examId() ? this.examDict()[this.examId()!]?.title : 'all-exams';
-    downloadCsv(`candidates-${slugify(exam ?? 'exam')}.csv`, csv);
+    downloadCsv(
+      `candidates-${slugify(this.examId() ? this.examTitle(this.examId()) : 'all')}.csv`,
+      csv,
+    );
   }
 }

@@ -18,13 +18,12 @@ import { CandidateAuthActions } from '../../auth/store/auth.actions';
 import {
   selectAuthError,
   selectAuthLoading,
-  selectCandidateSession,
   selectIsAuthenticated,
   selectLoginStatus,
 } from '../../auth/store/auth.selectors';
 import { CandidateSessionService } from '../../auth/candidate-session.service';
 
-/** /exam/login: sign in, plus the "can't start" screens (already done, not open, locked out). */
+/** /exam/login: candidate sign-in. */
 @Component({
   selector: 'app-candidate-login',
   imports: [
@@ -46,17 +45,10 @@ export class CandidateLoginComponent implements OnInit {
 
   protected readonly loading = this.store.selectSignal(selectAuthLoading);
   protected readonly status = this.store.selectSignal(selectLoginStatus);
-  protected readonly session = this.store.selectSignal(selectCandidateSession);
   protected readonly serverError = this.store.selectSignal(selectAuthError);
   private readonly authenticated = this.store.selectSignal(selectIsAuthenticated);
 
   protected readonly showPasscode = signal(false);
-
-  /** Correct details, but the exam can't be taken: show a full-card message instead of the form. */
-  protected readonly blocked = computed(() => {
-    const s = this.status();
-    return s === 'already_attempted' || s === 'not_published' ? s : null;
-  });
 
   protected readonly formError = computed(() => {
     switch (this.status()) {
@@ -78,7 +70,7 @@ export class CandidateLoginComponent implements OnInit {
 
   ngOnInit(): void {
     if (this.authenticated()) {
-      this.router.navigateByUrl('/exam/welcome');
+      this.router.navigateByUrl('/exam/home');
     } else if (this.sessions.hasSavedSession()) {
       // Refreshed mid-way: resume instead of asking for the passcode again.
       this.store.dispatch(CandidateAuthActions.restoreSession());
@@ -92,10 +84,5 @@ export class CandidateLoginComponent implements OnInit {
     }
     const { username, passcode } = this.form.getRawValue();
     this.store.dispatch(CandidateAuthActions.login({ username: username.trim(), passcode }));
-  }
-
-  protected backToSignIn(): void {
-    this.form.reset();
-    this.store.dispatch(CandidateAuthActions.logout());
   }
 }

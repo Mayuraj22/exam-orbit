@@ -1,4 +1,5 @@
 import { Routes } from '@angular/router';
+import { OUTLINED_FORM_FIELDS } from '../../shared/form-field-defaults';
 import { provideState } from '@ngrx/store';
 import { provideEffects } from '@ngrx/effects';
 import { adminExamsFeature } from './store/exams.reducer';
@@ -15,6 +16,7 @@ export const ADMIN_ROUTES: Routes = [
     providers: [
       provideState(adminExamsFeature),
       provideEffects(adminExamsEffects, adminNotificationEffects),
+      OUTLINED_FORM_FIELDS,
     ],
     children: [
       {

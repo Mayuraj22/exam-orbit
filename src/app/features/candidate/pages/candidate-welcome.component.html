@@ -56,7 +56,10 @@
     }
 
     <div class="actions">
-      <button mat-button type="button" (click)="signOut()">Sign out</button>
+      <button mat-button type="button" (click)="back()">
+        <mat-icon>arrow_back</mat-icon>
+        My exams
+      </button>
       <button mat-flat-button type="button" (click)="start()">
         {{ exam.camera_required ? 'Continue to camera check' : 'Start exam' }}
         <mat-icon iconPositionEnd>arrow_forward</mat-icon>

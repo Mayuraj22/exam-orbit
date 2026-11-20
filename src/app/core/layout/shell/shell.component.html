@@ -9,10 +9,11 @@
     [attr.role]="isHandset() ? 'dialog' : 'navigation'"
   >
     <div class="brand">
-      <mat-icon class="brand-icon">public</mat-icon>
-      <span>ExamOrbit</span>
+      <span class="logo" aria-hidden="true"><mat-icon>public</mat-icon></span>
+      <span class="brand-name">ExamOrbit</span>
     </div>
 
+    <p class="nav-label">Menu</p>
     <mat-nav-list aria-label="Main navigation">
       @for (item of navItems; track item.route) {
         @if (item.comingSoon) {
@@ -35,6 +36,26 @@
         }
       }
     </mat-nav-list>
+
+    @if (email(); as email) {
+      <div class="account">
+        <span class="avatar" aria-hidden="true">{{ initials() }}</span>
+        <span class="account-text">
+          <span class="account-role">Admin</span>
+          <span class="account-mail" [title]="email">{{ email }}</span>
+        </span>
+        <button
+          mat-icon-button
+          type="button"
+          class="account-out"
+          aria-label="Sign out"
+          title="Sign out"
+          (click)="signOut()"
+        >
+          <mat-icon>logout</mat-icon>
+        </button>
+      </div>
+    }
   </mat-sidenav>
 
   <mat-sidenav-content class="content">
@@ -45,7 +66,7 @@
         </button>
         <span class="toolbar-title">ExamOrbit</span>
       } @else {
-        <span class="toolbar-title">Admin</span>
+        <span class="toolbar-title">Admin console</span>
       }
       <span class="spacer"></span>
       <button
@@ -56,18 +77,6 @@
         [title]="'Theme: ' + themeLabel()"
       >
         <mat-icon>{{ themeIcon() }}</mat-icon>
-      </button>
-      @if (email(); as email) {
-        <span class="account-email" [title]="email">{{ email }}</span>
-      }
-      <button
-        mat-icon-button
-        type="button"
-        aria-label="Sign out"
-        title="Sign out"
-        (click)="signOut()"
-      >
-        <mat-icon>logout</mat-icon>
       </button>
     </mat-toolbar>
 

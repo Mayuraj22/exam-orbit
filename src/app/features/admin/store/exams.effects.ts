@@ -205,9 +205,9 @@ export const loadCandidates$ = createEffect(
   (actions$ = inject(Actions), api = inject(SupabaseService)) =>
     actions$.pipe(
       ofType(A.loadCandidates),
-      switchMap(({ examId }) =>
-        (examId ? api.getCandidatesByExamId(examId) : api.getAllCandidates()).pipe(
-          map((candidates) => A.loadCandidatesSuccess({ candidates })),
+      switchMap(() =>
+        api.getAllCandidates().pipe(
+          map((r) => A.loadCandidatesSuccess({ candidates: r })),
           catchError((e) => of(A.loadCandidatesFailure({ error: toMessage(e) }))),
         ),
       ),
@@ -219,9 +219,9 @@ export const createCandidates$ = createEffect(
   (actions$ = inject(Actions), api = inject(SupabaseService)) =>
     actions$.pipe(
       ofType(A.createCandidates),
-      concatMap(({ candidates }) =>
-        api.createCandidates(candidates).pipe(
-          map((created) => A.createCandidatesSuccess({ candidates: created })),
+      concatMap((p) =>
+        api.createCandidates(p.candidates, p.examIds).pipe(
+          map((r) => A.createCandidatesSuccess({ candidates: r })),
           catchError((e) => of(A.createCandidatesFailure({ error: toMessage(e) }))),
         ),
       ),
@@ -229,14 +229,42 @@ export const createCandidates$ = createEffect(
   { functional: true },
 );
 
-export const deleteCandidate$ = createEffect(
+export const assignCandidates$ = createEffect(
   (actions$ = inject(Actions), api = inject(SupabaseService)) =>
     actions$.pipe(
-      ofType(A.deleteCandidate),
-      mergeMap(({ id }) =>
-        api.deleteCandidate(id).pipe(
-          map(() => A.deleteCandidateSuccess({ id })),
-          catchError((e) => of(A.deleteCandidateFailure({ error: toMessage(e) }))),
+      ofType(A.assignCandidates),
+      concatMap((p) =>
+        api.assignCandidates(p.candidateIds, p.examIds).pipe(
+          map((r) => A.assignCandidatesSuccess({ candidates: r, examCount: p.examIds.length })),
+          catchError((e) => of(A.assignCandidatesFailure({ error: toMessage(e) }))),
+        ),
+      ),
+    ),
+  { functional: true },
+);
+
+export const unassignCandidates$ = createEffect(
+  (actions$ = inject(Actions), api = inject(SupabaseService)) =>
+    actions$.pipe(
+      ofType(A.unassignCandidates),
+      concatMap((p) =>
+        api.unassignCandidates(p.candidateIds, p.examId).pipe(
+          map((r) => A.unassignCandidatesSuccess({ candidates: r })),
+          catchError((e) => of(A.unassignCandidatesFailure({ error: toMessage(e) }))),
+        ),
+      ),
+    ),
+  { functional: true },
+);
+
+export const deleteCandidates$ = createEffect(
+  (actions$ = inject(Actions), api = inject(SupabaseService)) =>
+    actions$.pipe(
+      ofType(A.deleteCandidates),
+      concatMap((p) =>
+        api.deleteCandidates(p.ids).pipe(
+          map(() => A.deleteCandidatesSuccess({ ids: p.ids })),
+          catchError((e) => of(A.deleteCandidatesFailure({ error: toMessage(e) }))),
         ),
       ),
     ),
@@ -247,9 +275,9 @@ export const resetCandidateAttempt$ = createEffect(
   (actions$ = inject(Actions), api = inject(SupabaseService)) =>
     actions$.pipe(
       ofType(A.resetCandidateAttempt),
-      concatMap(({ id }) =>
-        api.updateCandidate(id, { has_attempted: false }).pipe(
-          map((candidate) => A.resetCandidateAttemptSuccess({ candidate })),
+      concatMap((p) =>
+        api.resetAttempt(p.id, p.examId).pipe(
+          map((r) => A.resetCandidateAttemptSuccess({ candidate: r })),
           catchError((e) => of(A.resetCandidateAttemptFailure({ error: toMessage(e) }))),
         ),
       ),
@@ -257,14 +285,14 @@ export const resetCandidateAttempt$ = createEffect(
   { functional: true },
 );
 
-export const resetCandidatePasscode$ = createEffect(
+export const resetCandidatePasscodes$ = createEffect(
   (actions$ = inject(Actions), api = inject(SupabaseService)) =>
     actions$.pipe(
-      ofType(A.resetCandidatePasscode),
-      concatMap(({ id, passcode }) =>
-        api.updateCandidate(id, { passcode }).pipe(
-          map((candidate) => A.resetCandidatePasscodeSuccess({ candidate })),
-          catchError((e) => of(A.resetCandidatePasscodeFailure({ error: toMessage(e) }))),
+      ofType(A.resetCandidatePasscodes),
+      concatMap((p) =>
+        api.resetPasscodes(p.items).pipe(
+          map((r) => A.resetCandidatePasscodesSuccess({ candidates: r })),
+          catchError((e) => of(A.resetCandidatePasscodesFailure({ error: toMessage(e) }))),
         ),
       ),
     ),
@@ -356,9 +384,11 @@ export const adminExamsEffects = {
   deleteQuestion$,
   loadCandidates$,
   createCandidates$,
-  deleteCandidate$,
+  assignCandidates$,
+  unassignCandidates$,
+  deleteCandidates$,
   resetCandidateAttempt$,
-  resetCandidatePasscode$,
+  resetCandidatePasscodes$,
   loadAllResults$,
   loadResultsForExam$,
   loadResult$,

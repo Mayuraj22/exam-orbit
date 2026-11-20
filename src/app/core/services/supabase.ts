@@ -20,7 +20,8 @@ const normalizeExam = (row: Exam): Exam => ({ ...DEFAULT_EXAM_SETTINGS, ...row }
 const normalizeResult = (row: Result): Result => ({ ...DEFAULT_RESULT_FIELDS, ...row });
 
 /** Candidate columns the admin app reads. Never the passcode hash. */
-const CANDIDATE_COLUMNS = 'id, exam_id, name, username, has_attempted';
+const CANDIDATE_COLUMNS =
+  'id, name, username, email, assignments:exam_assignments(exam_id, has_attempted, assigned_at)';
 
 /** Shape of every Supabase query response we await. */
 interface QueryResponse<T> {
@@ -167,58 +168,116 @@ export class SupabaseService {
     );
   }
 
-  // Candidates
-  getCandidatesByExamId(examId: string): Observable<Candidate[]> {
-    return this.run(
-      this.supabase
-        .from('candidates')
-        .select(CANDIDATE_COLUMNS)
-        .eq('exam_id', examId)
-        .order('name'),
-    );
-  }
+  // Candidates (people) and their exam assignments
 
-  /** Every candidate across all exams (sidebar Candidates page). */
+  /** Every candidate with their assigned exams. */
   getAllCandidates(): Observable<Candidate[]> {
     return this.run(this.supabase.from('candidates').select(CANDIDATE_COLUMNS).order('name'));
   }
 
-  createCandidate(candidate: NewCandidate): Observable<Candidate> {
-    return this.run(
-      this.supabase.from('candidates').insert(candidate).select(CANDIDATE_COLUMNS).single(),
+  private async fetchCandidates(ids: string[]): Promise<Candidate[]> {
+    if (!ids.length) return [];
+    return this.unwrap<Candidate[]>(
+      this.supabase.from('candidates').select(CANDIDATE_COLUMNS).in('id', ids),
     );
   }
 
-  /** Bulk insert (CSV import) in one request: all rows succeed or none do. */
-  createCandidates(candidates: NewCandidate[]): Observable<Candidate[]> {
-    return this.run(this.supabase.from('candidates').insert(candidates).select(CANDIDATE_COLUMNS));
+  /** Bulk insert (one request: all succeed or none), then assign them to exams. */
+  createCandidates(people: NewCandidate[], examIds: string[] = []): Observable<Candidate[]> {
+    return from(
+      (async () => {
+        const created = await this.unwrap<{ id: string }[]>(
+          this.supabase.from('candidates').insert(people).select('id'),
+        );
+        const ids = created.map((c) => c.id);
+        await this.insertAssignments(ids, examIds);
+        return this.fetchCandidates(ids);
+      })(),
+    );
   }
 
-  /** `passcode` in changes = reset it (hashed by the database). */
-  updateCandidate(id: string, changes: Partial<NewCandidate>): Observable<Candidate> {
-    return this.run(
+  /** Assigns every candidate to every exam; existing assignments are left as they are. */
+  assignCandidates(candidateIds: string[], examIds: string[]): Observable<Candidate[]> {
+    return from(
+      (async () => {
+        await this.insertAssignments(candidateIds, examIds);
+        return this.fetchCandidates(candidateIds);
+      })(),
+    );
+  }
+
+  private async insertAssignments(candidateIds: string[], examIds: string[]): Promise<void> {
+    const rows = candidateIds.flatMap((candidate_id) =>
+      examIds.map((exam_id) => ({ candidate_id, exam_id })),
+    );
+    if (!rows.length) return;
+    await this.unwrap(
       this.supabase
-        .from('candidates')
-        .update(changes)
-        .eq('id', id)
-        .select(CANDIDATE_COLUMNS)
-        .single(),
+        .from('exam_assignments')
+        .upsert(rows, { onConflict: 'candidate_id,exam_id', ignoreDuplicates: true }),
     );
   }
 
-  deleteCandidate(id: string): Observable<void> {
-    return this.run(this.supabase.from('candidates').delete().eq('id', id));
+  /** Removes the exam from these candidates (their past results are kept). */
+  unassignCandidates(candidateIds: string[], examId: string): Observable<Candidate[]> {
+    return from(
+      (async () => {
+        await this.unwrap(
+          this.supabase
+            .from('exam_assignments')
+            .delete()
+            .eq('exam_id', examId)
+            .in('candidate_id', candidateIds),
+        );
+        return this.fetchCandidates(candidateIds);
+      })(),
+    );
   }
 
-  markCandidateAttempted(id: string): Observable<Candidate> {
-    return this.run(
-      this.supabase
-        .from('candidates')
-        .update({ has_attempted: true })
-        .eq('id', id)
-        .select()
-        .single(),
+  /** Lets the candidate take this exam again. */
+  resetAttempt(candidateId: string, examId: string): Observable<Candidate> {
+    return from(
+      (async () => {
+        await this.unwrap(
+          this.supabase
+            .from('exam_assignments')
+            .update({ has_attempted: false })
+            .eq('candidate_id', candidateId)
+            .eq('exam_id', examId),
+        );
+        const [candidate] = await this.fetchCandidates([candidateId]);
+        return candidate;
+      })(),
     );
+  }
+
+  /** New passcodes (hashed by the database). */
+  resetPasscodes(items: { id: string; passcode: string }[]): Observable<Candidate[]> {
+    return from(
+      (async () => {
+        for (const { id, passcode } of items) {
+          await this.unwrap(this.supabase.from('candidates').update({ passcode }).eq('id', id));
+        }
+        return this.fetchCandidates(items.map((i) => i.id));
+      })(),
+    );
+  }
+
+  updateCandidate(
+    id: string,
+    changes: Partial<Pick<NewCandidate, 'name' | 'email'>>,
+  ): Observable<Candidate> {
+    return from(
+      (async () => {
+        await this.unwrap(this.supabase.from('candidates').update(changes).eq('id', id));
+        const [candidate] = await this.fetchCandidates([id]);
+        return candidate;
+      })(),
+    );
+  }
+
+  deleteCandidates(ids: string[]): Observable<void> {
+    return this.run(this.supabase.from('candidates').delete().in('id', ids));
   }
 
   // Results
@@ -261,6 +320,7 @@ export class SupabaseService {
         .from('proctoring_events')
         .select('*')
         .eq('candidate_id', result.candidate_id)
+        .eq('exam_id', result.exam_id)
         .eq('attempt_number', result.attempt_number)
         .order('occurred_at', { ascending: true }),
     );

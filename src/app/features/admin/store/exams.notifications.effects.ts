@@ -23,7 +23,7 @@ const successMessages = [
   [A.deleteQuestionSuccess, 'Question deleted'],
   [A.submitGradingSuccess, 'Grading saved'],
   [A.saveReviewSuccess, 'Review decision saved'],
-  [A.deleteCandidateSuccess, 'Candidate removed'],
+  [A.unassignCandidatesSuccess, 'Removed from the exam'],
   [A.resetCandidateAttemptSuccess, 'Attempt reset: the candidate can take the exam again'],
 ] as const;
 
@@ -41,9 +41,11 @@ const failureMessages = [
   [A.submitGradingFailure, "Couldn't save grading"],
   [A.saveReviewFailure, "Couldn't save the review decision"],
   [A.createCandidatesFailure, "Couldn't add candidates"],
-  [A.deleteCandidateFailure, "Couldn't remove the candidate"],
+  [A.assignCandidatesFailure, "Couldn't assign the exam"],
+  [A.unassignCandidatesFailure, "Couldn't remove from the exam"],
+  [A.deleteCandidatesFailure, "Couldn't delete the candidates"],
   [A.resetCandidateAttemptFailure, "Couldn't reset the attempt"],
-  [A.resetCandidatePasscodeFailure, "Couldn't reset the passcode"],
+  [A.resetCandidatePasscodesFailure, "Couldn't reset the passcodes"],
 ] as const;
 
 const successByType = new Map<string, string>(
@@ -85,7 +87,33 @@ export const candidatesAddedToast$ = createEffect(
   { functional: true, dispatch: false },
 );
 
+export const candidatesAssignedToast$ = createEffect(
+  (actions$ = inject(Actions), notify = inject(NotificationService)) =>
+    actions$.pipe(
+      ofType(A.assignCandidatesSuccess),
+      tap(({ candidates, examCount }) => {
+        const people = candidates.length === 1 ? '1 candidate' : `${candidates.length} candidates`;
+        const exams = examCount === 1 ? '1 exam' : `${examCount} exams`;
+        notify.success(`Assigned ${people} to ${exams}`);
+      }),
+    ),
+  { functional: true, dispatch: false },
+);
+
+export const candidatesDeletedToast$ = createEffect(
+  (actions$ = inject(Actions), notify = inject(NotificationService)) =>
+    actions$.pipe(
+      ofType(A.deleteCandidatesSuccess),
+      tap(({ ids }) =>
+        notify.success(ids.length === 1 ? 'Candidate deleted' : `${ids.length} candidates deleted`),
+      ),
+    ),
+  { functional: true, dispatch: false },
+);
+
 export const adminNotificationEffects = {
+  candidatesAssignedToast$,
+  candidatesDeletedToast$,
   saveSuccessToast$,
   saveFailureToast$,
   candidatesAddedToast$,

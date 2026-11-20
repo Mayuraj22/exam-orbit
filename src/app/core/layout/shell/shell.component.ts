@@ -95,6 +95,10 @@ export class ShellComponent {
   private readonly router = inject(Router);
 
   protected readonly email = this.auth.email;
+  /** "jo" from joy@gmail.com, for the avatar. */
+  protected readonly initials = computed(() =>
+    (this.email() ?? '?').split('@')[0].slice(0, 2).toUpperCase(),
+  );
 
   protected async signOut(): Promise<void> {
     await this.auth.signOut();
@@ -103,7 +107,7 @@ export class ShellComponent {
 
   private readonly document = inject(DOCUMENT);
 
-  private static readonly THEME_ORDER: ThemePreference[] = ['system', 'light', 'dark'];
+  private static readonly THEME_ORDER: ThemePreference[] = ['light', 'dark', 'system'];
   private static readonly THEME_INFO: Record<ThemePreference, { label: string; icon: string }> = {
     system: { label: 'System', icon: 'brightness_auto' },
     light: { label: 'Light', icon: 'light_mode' },
@@ -117,7 +121,7 @@ export class ShellComponent {
     () => ShellComponent.THEME_INFO[this.theme.preference()].icon,
   );
 
-  /** System → Light → Dark → System. */
+  /** Light → Dark → System → Light. */
   protected cycleTheme(): void {
     const order = ShellComponent.THEME_ORDER;
     this.theme.set(order[(order.indexOf(this.theme.preference()) + 1) % order.length]);

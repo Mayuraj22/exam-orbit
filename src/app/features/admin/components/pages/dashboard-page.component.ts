@@ -3,9 +3,7 @@ import { DatePipe } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
 import { Store } from '@ngrx/store';
 import { MatButtonModule } from '@angular/material/button';
-import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
-import { MatListModule } from '@angular/material/list';
 import { AdminExamsActions } from '../../store/exams.actions';
 import {
   selectCandidateDictionary,
@@ -24,7 +22,7 @@ const LIST_SIZE = 5;
 /** /admin: overview of exams, candidates and submissions with quick links. */
 @Component({
   selector: 'app-dashboard-page',
-  imports: [DatePipe, RouterLink, MatButtonModule, MatCardModule, MatIconModule, MatListModule],
+  imports: [DatePipe, RouterLink, MatButtonModule, MatIconModule],
   templateUrl: './dashboard-page.component.html',
   styleUrl: './dashboard-page.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -44,49 +42,43 @@ export class DashboardPageComponent implements OnInit {
 
   protected readonly loading = computed(() => this.examsLoading() || this.resultsLoading());
 
+  protected readonly greeting = (() => {
+    const h = new Date().getHours();
+    return h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
+  })();
+  protected readonly today = new Date();
+
   protected readonly stats = computed(() => {
     const exams = this.exams();
     const results = this.results();
     return [
-      { label: 'Exams', value: exams.length, icon: 'assignment', link: '/admin/exams', query: {} },
       {
-        label: 'Published',
+        label: 'Live exams',
         value: exams.filter((e) => e.is_published).length,
-        icon: 'public',
         link: '/admin/exams',
-        query: { status: 'published' },
       },
+      { label: 'Candidates', value: this.candidates().length, link: '/admin/candidates' },
+      { label: 'Submissions', value: results.length, link: '/admin/results' },
       {
-        label: 'Candidates',
-        value: this.candidates().length,
-        icon: 'groups',
-        link: '/admin/candidates',
-        query: {},
-      },
-      {
-        label: 'Submissions',
-        value: results.length,
-        icon: 'inbox',
+        label: 'Graded',
+        value: results.filter((r) => r.is_fully_graded).length,
         link: '/admin/results',
-        query: {},
-      },
-      {
-        label: 'Needs grading',
-        value: results.filter((r) => !r.is_fully_graded).length,
-        icon: 'rate_review',
-        link: '/admin/results',
-        query: { status: 'needs-grading' },
-        attention: true,
-      },
-      {
-        label: 'Needs review',
-        value: results.filter(needsProctoringReview).length,
-        icon: 'flag',
-        link: '/admin/results',
-        query: { status: 'needs-review' },
-        attention: true,
       },
     ];
+  });
+
+  protected readonly todoCount = computed(
+    () =>
+      this.results().filter((r) => !r.is_fully_graded).length +
+      this.results().filter(needsProctoringReview).length,
+  );
+
+  /** One line under the greeting summarising what needs doing. */
+  protected readonly subtitle = computed(() => {
+    const todo = this.todoCount();
+    return todo
+      ? `${todo} item${todo === 1 ? '' : 's'} waiting for you`
+      : 'Everything is up to date';
   });
 
   /** Joins a result with its candidate and exam names. */
@@ -116,7 +108,7 @@ export class DashboardPageComponent implements OnInit {
 
   ngOnInit(): void {
     this.store.dispatch(AdminExamsActions.loadExams());
-    this.store.dispatch(AdminExamsActions.loadCandidates({}));
+    this.store.dispatch(AdminExamsActions.loadCandidates());
     this.store.dispatch(AdminExamsActions.loadAllResults());
   }
 

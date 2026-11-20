@@ -30,20 +30,20 @@ export class ThemeService {
   }
 
   private load(): ThemePreference {
-    if (!this.isBrowser) return 'system';
+    if (!this.isBrowser) return 'light';
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
-      return saved === 'light' || saved === 'dark' ? saved : 'system';
+      // Light by default; "System" follows the device; the choice is remembered.
+      return saved === 'dark' || saved === 'system' ? saved : 'light';
     } catch {
-      return 'system'; // storage blocked (private mode, policies)
+      return 'light'; // storage blocked (private mode, policies)
     }
   }
 
   private save(pref: ThemePreference): void {
     if (!this.isBrowser) return;
     try {
-      if (pref === 'system') localStorage.removeItem(STORAGE_KEY);
-      else localStorage.setItem(STORAGE_KEY, pref);
+      localStorage.setItem(STORAGE_KEY, pref);
     } catch {
       // Not critical: the theme just won't be remembered.
     }

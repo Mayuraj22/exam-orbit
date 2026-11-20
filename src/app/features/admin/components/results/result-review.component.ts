@@ -176,7 +176,7 @@ export class ResultReviewComponent {
       if (!r || this.relatedRequested === r.id) return;
       this.relatedRequested = r.id;
       if (!this.exams()[r.exam_id]) this.store.dispatch(AdminExamsActions.loadExams());
-      this.store.dispatch(AdminExamsActions.loadCandidates({ examId: r.exam_id }));
+      this.store.dispatch(AdminExamsActions.loadCandidates());
       this.store.dispatch(AdminExamsActions.loadQuestions({ examId: r.exam_id }));
       this.decision.set(r.review_status);
       this.note.set(r.review_note ?? '');

@@ -59,29 +59,36 @@ export const AdminExamsActions = createActionGroup({
     'Reorder Questions Success': emptyProps(),
     'Reorder Questions Failure': props<{ examId: string; error: string }>(),
 
-    /** examId omitted = all candidates across exams. */
-    'Load Candidates': props<{ examId?: string }>(),
+    'Load Candidates': emptyProps(),
     'Load Candidates Success': props<{ candidates: Candidate[] }>(),
     'Load Candidates Failure': props<{ error: string }>(),
 
-    /** One or many (CSV import); saved in a single request. */
-    'Create Candidates': props<{ candidates: NewCandidate[] }>(),
+    /** One or many (CSV import), optionally assigned to exams straight away. */
+    'Create Candidates': props<{ candidates: NewCandidate[]; examIds: string[] }>(),
     'Create Candidates Success': props<{ candidates: Candidate[] }>(),
     'Create Candidates Failure': props<{ error: string }>(),
 
-    'Delete Candidate': props<{ id: string }>(),
-    'Delete Candidate Success': props<{ id: string }>(),
-    'Delete Candidate Failure': props<{ error: string }>(),
+    'Assign Candidates': props<{ candidateIds: string[]; examIds: string[] }>(),
+    'Assign Candidates Success': props<{ candidates: Candidate[]; examCount: number }>(),
+    'Assign Candidates Failure': props<{ error: string }>(),
 
-    /** Lets a candidate take the exam again (has_attempted → false). */
-    'Reset Candidate Attempt': props<{ id: string }>(),
+    'Unassign Candidates': props<{ candidateIds: string[]; examId: string }>(),
+    'Unassign Candidates Success': props<{ candidates: Candidate[] }>(),
+    'Unassign Candidates Failure': props<{ error: string }>(),
+
+    'Delete Candidates': props<{ ids: string[] }>(),
+    'Delete Candidates Success': props<{ ids: string[] }>(),
+    'Delete Candidates Failure': props<{ error: string }>(),
+
+    /** Lets a candidate take one exam again. */
+    'Reset Candidate Attempt': props<{ id: string; examId: string }>(),
     'Reset Candidate Attempt Success': props<{ candidate: Candidate }>(),
     'Reset Candidate Attempt Failure': props<{ error: string }>(),
 
-    /** Sets a new passcode (generated in the app, shown to the admin once). */
-    'Reset Candidate Passcode': props<{ id: string; passcode: string }>(),
-    'Reset Candidate Passcode Success': props<{ candidate: Candidate }>(),
-    'Reset Candidate Passcode Failure': props<{ error: string }>(),
+    /** New passcodes (generated in the app, shown to the admin once). */
+    'Reset Candidate Passcodes': props<{ items: { id: string; passcode: string }[] }>(),
+    'Reset Candidate Passcodes Success': props<{ candidates: Candidate[] }>(),
+    'Reset Candidate Passcodes Failure': props<{ error: string }>(),
 
     'Load All Results': emptyProps(),
 

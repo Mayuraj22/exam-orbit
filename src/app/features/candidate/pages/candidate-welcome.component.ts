@@ -6,6 +6,7 @@ import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatIconModule } from '@angular/material/icon';
 import { CandidateAuthActions } from '../../auth/store/auth.actions';
 import { selectCandidateSession } from '../../auth/store/auth.selectors';
+import { SelectedExamService } from '../exam/selected-exam.service';
 
 /** /exam/welcome: exam details, rules and (when the webcam is required) consent. */
 @Component({
@@ -16,11 +17,16 @@ import { selectCandidateSession } from '../../auth/store/auth.selectors';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class CandidateWelcomeComponent {
+  constructor() {
+    // Opened without choosing an exam first (e.g. an old link): go to the list.
+    if (!inject(SelectedExamService).exam()) inject(Router).navigateByUrl('/exam/home');
+  }
+
   private readonly store = inject(Store);
   private readonly router = inject(Router);
 
   protected readonly session = this.store.selectSignal(selectCandidateSession);
-  protected readonly exam = computed(() => this.session()?.exam ?? null);
+  protected readonly exam = inject(SelectedExamService).exam;
   protected readonly firstName = computed(() => this.session()?.candidate.name.split(' ')[0] ?? '');
 
   protected readonly consented = signal(false);
@@ -53,6 +59,11 @@ export class CandidateWelcomeComponent {
       return;
     }
     this.router.navigateByUrl(this.exam()?.camera_required ? '/exam/check' : '/exam/take');
+  }
+
+  /** Back to "My exams" (e.g. to pick a different exam). */
+  protected back(): void {
+    this.router.navigateByUrl('/exam/home');
   }
 
   protected signOut(): void {

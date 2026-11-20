@@ -4,11 +4,9 @@ import { Router, RouterLink } from '@angular/router';
 import { Store } from '@ngrx/store';
 import { MatButtonModule } from '@angular/material/button';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
-import { MatCardModule } from '@angular/material/card';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
-import { MatInputModule } from '@angular/material/input';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSelectModule } from '@angular/material/select';
@@ -41,11 +39,9 @@ const SORTERS: Record<SortOption, (a: Exam, b: Exam) => number> = {
     RouterLink,
     MatButtonModule,
     MatButtonToggleModule,
-    MatCardModule,
     MatDividerModule,
     MatFormFieldModule,
     MatIconModule,
-    MatInputModule,
     MatMenuModule,
     MatProgressBarModule,
     MatSelectModule,

@@ -36,13 +36,13 @@ export const restoreSession$ = createEffect(
   { functional: true },
 );
 
-/** A successful login goes straight to the instructions page. */
+/** A successful login goes to the candidate's list of exams. */
 export const loginRedirect$ = createEffect(
   (actions$ = inject(Actions), router = inject(Router)) =>
     actions$.pipe(
       ofType(CandidateAuthActions.loginResult),
       filter(({ result }) => result.status === 'ok'),
-      tap(() => router.navigateByUrl('/exam/welcome')),
+      tap(() => router.navigateByUrl('/exam/home')),
     ),
   { functional: true, dispatch: false },
 );

@@ -5,6 +5,7 @@ import { candidateAuthFeature } from '../auth/store/auth.reducer';
 import { candidateAuthEffects } from '../auth/store/auth.effects';
 import { candidateGuard } from '../../core/guards/candidate.guard';
 import { ProctoringService } from './exam/proctoring.service';
+import { OUTLINED_FORM_FIELDS } from '../../shared/form-field-defaults';
 
 /** Candidate area (/exam/...): no admin shell; its own store slice. */
 export const CANDIDATE_ROUTES: Routes = [
@@ -15,6 +16,7 @@ export const CANDIDATE_ROUTES: Routes = [
       provideEffects(candidateAuthEffects),
       // One instance for the whole sitting: the camera stays on from the check into the exam.
       ProctoringService,
+      OUTLINED_FORM_FIELDS,
     ],
     loadComponent: () =>
       import('./candidate-layout.component').then((m) => m.CandidateLayoutComponent),
@@ -25,6 +27,13 @@ export const CANDIDATE_ROUTES: Routes = [
         loadComponent: () =>
           import('./pages/candidate-login.component').then((m) => m.CandidateLoginComponent),
         title: 'Sign in to your exam · ExamOrbit',
+      },
+      {
+        path: 'home',
+        canActivate: [candidateGuard],
+        loadComponent: () =>
+          import('./pages/candidate-home.component').then((m) => m.CandidateHomeComponent),
+        title: 'My exams · ExamOrbit',
       },
       {
         path: 'welcome',

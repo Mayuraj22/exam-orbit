@@ -1,50 +1,51 @@
 <div class="candidates">
   <div class="toolbar">
     <div class="stats" aria-live="polite">
-      <span
-        ><strong>{{ stats().total }}</strong> candidates</span
-      >
-      <span
-        ><strong>{{ stats().attempted }}</strong> attempted</span
-      >
-      <span
-        ><strong>{{ stats().notStarted }}</strong> not started</span
-      >
+      @for (s of stats(); track s.label) {
+        <span class="stat-pill" [attr.data-i]="$index"
+          ><strong>{{ s.value }}</strong> {{ s.label }}</span
+        >
+      }
     </div>
     <span class="spacer"></span>
-    <button mat-button type="button" [disabled]="!stats().total" (click)="exportCsv()">
+    <button mat-button type="button" [disabled]="!rows().length" (click)="exportCsv()">
       <mat-icon>download</mat-icon>
-      Export CSV
+      Export
     </button>
-    @if (targetExamId()) {
-      <button mat-stroked-button type="button" (click)="openImport()">
-        <mat-icon>upload_file</mat-icon>
-        Import CSV
+    <button mat-stroked-button type="button" (click)="openImport()">
+      <mat-icon>upload_file</mat-icon>
+      Import CSV
+    </button>
+    @if (examMode()) {
+      <button mat-stroked-button type="button" (click)="openAssignExisting()">
+        <mat-icon>group_add</mat-icon>
+        Assign existing
       </button>
-      <button mat-flat-button type="button" (click)="openAdd()">
-        <mat-icon>person_add</mat-icon>
-        Add candidate
-      </button>
-    } @else {
-      <span class="pick-exam-hint">
-        <mat-icon inline aria-hidden="true">info</mat-icon>
-        Choose an exam below to add candidates
-      </span>
     }
+    <button mat-flat-button type="button" (click)="openAdd()">
+      <mat-icon>person_add</mat-icon>
+      Add candidate
+    </button>
   </div>
 
   <div class="filters">
-    <mat-form-field class="search-field" appearance="outline" subscriptSizing="dynamic">
-      <mat-icon matPrefix>search</mat-icon>
-      <mat-label>Search by name or username</mat-label>
-      <input matInput [value]="search()" (input)="search.set($any($event.target).value)" />
-    </mat-form-field>
+    <label class="search">
+      <mat-icon aria-hidden="true">search</mat-icon>
+      <input
+        type="search"
+        placeholder="Search name, username or email"
+        aria-label="Search candidates"
+        [value]="search()"
+        (input)="search.set($any($event.target).value)"
+      />
+    </label>
 
-    @if (allExamsMode()) {
+    @if (!examMode()) {
       <mat-form-field class="exam-field" appearance="outline" subscriptSizing="dynamic">
         <mat-label>Exam</mat-label>
         <mat-select [value]="examFilter()" (selectionChange)="examFilter.set($event.value)">
-          <mat-option value="all">All exams</mat-option>
+          <mat-option value="all">Any exam</mat-option>
+          <mat-option value="unassigned">No exam assigned</mat-option>
           @for (exam of exams(); track exam.id) {
             <mat-option [value]="exam.id">{{ exam.title }}</mat-option>
           }
@@ -52,6 +53,55 @@
       </mat-form-field>
     }
   </div>
+
+  <!-- Bulk actions, shown while candidates are selected -->
+  @if (selectedRows().length) {
+    <div class="bulk-bar" role="region" aria-label="Actions for selected candidates">
+      <strong>{{ selectedRows().length }} selected</strong>
+      <button mat-button type="button" (click)="clearSelection()">Clear</button>
+      <span class="spacer"></span>
+      <button mat-button type="button" [disabled]="saving()" (click)="assignExams([...selected()])">
+        <mat-icon>assignment_add</mat-icon>
+        Assign to exams
+      </button>
+      @if (examMode()) {
+        <button
+          mat-button
+          type="button"
+          [disabled]="saving()"
+          (click)="removeFromExam(selectedRows())"
+        >
+          <mat-icon>playlist_remove</mat-icon>
+          Remove from exam
+        </button>
+      }
+      <button
+        mat-button
+        type="button"
+        [disabled]="saving()"
+        (click)="resetPasscodes(selectedRows())"
+      >
+        <mat-icon>key</mat-icon>
+        Reset passcodes
+      </button>
+      <button mat-button type="button" (click)="exportCsv()">
+        <mat-icon>download</mat-icon>
+        Export
+      </button>
+      @if (!examMode()) {
+        <button
+          mat-button
+          type="button"
+          class="danger"
+          [disabled]="saving()"
+          (click)="deleteCandidates(selectedRows())"
+        >
+          <mat-icon>delete_outline</mat-icon>
+          Delete
+        </button>
+      }
+    </div>
+  }
 
   @if (error(); as message) {
     <div class="error-banner" role="alert">
@@ -76,37 +126,82 @@
       matSortDirection="asc"
       aria-label="Candidates"
     >
+      <ng-container matColumnDef="select">
+        <th mat-header-cell *matHeaderCellDef class="select-cell">
+          <mat-checkbox
+            [checked]="allVisibleSelected()"
+            [indeterminate]="someVisibleSelected()"
+            [disabled]="!dataSource.filteredData.length"
+            (change)="toggleAllVisible()"
+            aria-label="Select all shown candidates"
+          />
+        </th>
+        <td mat-cell *matCellDef="let c" class="select-cell">
+          <mat-checkbox
+            [checked]="selected().has(c.id)"
+            (change)="toggle(c.id)"
+            [attr.aria-label]="'Select ' + c.name"
+          />
+        </td>
+      </ng-container>
+
       <ng-container matColumnDef="name">
         <th mat-header-cell *matHeaderCellDef mat-sort-header>Name</th>
-        <td mat-cell *matCellDef="let c" data-label="Name">{{ c.name }}</td>
+        <td mat-cell *matCellDef="let c" data-label="Name">
+          <div class="person">
+            <span class="avatar" [attr.data-tone]="c.name.length % 4" aria-hidden="true">{{
+              initials(c.name)
+            }}</span>
+            <div>
+              <div class="name">{{ c.name }}</div>
+              @if (c.email) {
+                <div class="email">{{ c.email }}</div>
+              }
+            </div>
+          </div>
+        </td>
       </ng-container>
 
       <ng-container matColumnDef="username">
         <th mat-header-cell *matHeaderCellDef mat-sort-header>Username</th>
-        <td mat-cell *matCellDef="let c" data-label="Username" class="mono">{{ c.username }}</td>
+        <td mat-cell *matCellDef="let c" data-label="Username">
+          <code class="user">@{{ c.username }}</code>
+        </td>
       </ng-container>
 
-      <ng-container matColumnDef="exam">
-        <th mat-header-cell *matHeaderCellDef mat-sort-header="examTitle">Exam</th>
-        <td mat-cell *matCellDef="let c" data-label="Exam">
-          <a
-            class="exam-link"
-            [routerLink]="['/admin/exams', c.exam_id]"
-            [queryParams]="{ tab: 'candidates' }"
-            >{{ c.examTitle }}</a
-          >
+      <ng-container matColumnDef="exams">
+        <th mat-header-cell *matHeaderCellDef>Assigned exams</th>
+        <td mat-cell *matCellDef="let c" data-label="Exams">
+          <div class="exam-chips">
+            @for (e of c.exams; track e.examId) {
+              <a
+                class="status-chip"
+                [class.published]="e.attempted"
+                [class.draft]="!e.attempted"
+                [routerLink]="['/admin/exams', e.examId]"
+                [queryParams]="{ tab: 'candidates' }"
+                [title]="e.title + (e.attempted ? ': attempted' : ': not started')"
+              >
+                {{ e.title }}
+                <mat-icon inline aria-hidden="true">{{
+                  e.attempted ? 'check' : 'schedule'
+                }}</mat-icon>
+              </a>
+            } @empty {
+              <button mat-button type="button" class="assign-link" (click)="assignExams([c.id])">
+                <mat-icon>add</mat-icon>
+                Assign exam
+              </button>
+            }
+          </div>
         </td>
       </ng-container>
 
       <ng-container matColumnDef="status">
-        <th mat-header-cell *matHeaderCellDef mat-sort-header>Status</th>
+        <th mat-header-cell *matHeaderCellDef>Status</th>
         <td mat-cell *matCellDef="let c" data-label="Status">
-          <span
-            class="status-chip"
-            [class.published]="c.has_attempted"
-            [class.draft]="!c.has_attempted"
-          >
-            {{ c.has_attempted ? 'Attempted' : 'Not started' }}
+          <span class="status-chip" [class.published]="c.attempted" [class.draft]="!c.attempted">
+            {{ c.attempted ? 'Attempted' : 'Not started' }}
           </span>
         </td>
       </ng-container>
@@ -114,15 +209,6 @@
       <ng-container matColumnDef="actions">
         <th mat-header-cell *matHeaderCellDef><span class="cdk-visually-hidden">Actions</span></th>
         <td mat-cell *matCellDef="let c" class="actions-cell">
-          <button
-            mat-icon-button
-            type="button"
-            (click)="copyCredentials(c)"
-            matTooltip="Copy sign-in details"
-            [attr.aria-label]="'Copy sign-in details for ' + c.name"
-          >
-            <mat-icon>content_copy</mat-icon>
-          </button>
           <button
             mat-icon-button
             type="button"
@@ -136,7 +222,11 @@
       </ng-container>
 
       <tr mat-header-row *matHeaderRowDef="displayedColumns()"></tr>
-      <tr mat-row *matRowDef="let row; columns: displayedColumns()"></tr>
+      <tr
+        mat-row
+        *matRowDef="let row; columns: displayedColumns()"
+        [class.selected-row]="selected().has(row.id)"
+      ></tr>
 
       <tr class="mat-mdc-row" *matNoDataRow>
         <td class="mat-mdc-cell no-data" [attr.colspan]="displayedColumns().length">
@@ -144,8 +234,10 @@
             Loading candidates…
           } @else if (search()) {
             No candidates match "{{ search() }}".
-          } @else if (allExamsMode()) {
-            No candidates yet. Choose an exam above, then Add candidate.
+          } @else if (examMode()) {
+            No one is assigned to this exam yet. Use Add candidate, Import CSV or Assign existing.
+          } @else if (examFilter() !== 'all') {
+            No candidates match this filter.
           } @else {
             No candidates yet. Add one, or import a CSV file.
           }
@@ -154,9 +246,8 @@
     </table>
 
     <mat-paginator
-      [pageSizeOptions]="[10, 25, 50]"
-      [pageSize]="10"
-      [hidePageSize]="false"
+      [pageSizeOptions]="[10, 25, 50, 100]"
+      [pageSize]="25"
       showFirstLastButtons
       aria-label="Candidates pages"
     />
@@ -165,27 +256,45 @@
 
 <mat-menu #rowMenu="matMenu" xPosition="before">
   <ng-template matMenuContent let-c="c">
+    <button mat-menu-item type="button" (click)="assignExams([c.id])">
+      <mat-icon>assignment_add</mat-icon>
+      <span>Assign to exams</span>
+    </button>
     <button mat-menu-item type="button" (click)="copyCredentials(c)">
       <mat-icon>content_copy</mat-icon>
       <span>Copy sign-in details</span>
     </button>
-    <button
-      mat-menu-item
-      type="button"
-      [disabled]="!c.has_attempted || saving()"
-      (click)="resetAttempt(c)"
-    >
-      <mat-icon>restart_alt</mat-icon>
-      <span>Reset attempt</span>
-    </button>
-    <button mat-menu-item type="button" [disabled]="saving()" (click)="resetPasscode(c)">
+    <button mat-menu-item type="button" [disabled]="saving()" (click)="resetPasscodes([c])">
       <mat-icon>key</mat-icon>
       <span>Reset passcode</span>
     </button>
-    <mat-divider />
-    <button mat-menu-item type="button" class="danger" [disabled]="saving()" (click)="remove(c)">
-      <mat-icon>person_remove</mat-icon>
-      <span>Remove candidate</span>
-    </button>
+    @if (examMode()) {
+      <button
+        mat-menu-item
+        type="button"
+        [disabled]="!c.attempted || saving()"
+        (click)="resetAttempt(c)"
+      >
+        <mat-icon>restart_alt</mat-icon>
+        <span>Reset attempt</span>
+      </button>
+      <mat-divider />
+      <button mat-menu-item type="button" [disabled]="saving()" (click)="removeFromExam([c])">
+        <mat-icon>playlist_remove</mat-icon>
+        <span>Remove from this exam</span>
+      </button>
+    } @else {
+      <mat-divider />
+      <button
+        mat-menu-item
+        type="button"
+        class="danger"
+        [disabled]="saving()"
+        (click)="deleteCandidates([c])"
+      >
+        <mat-icon>person_remove</mat-icon>
+        <span>Delete candidate</span>
+      </button>
+    }
   </ng-template>
 </mat-menu>

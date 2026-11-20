@@ -14,7 +14,6 @@ import {
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router } from '@angular/router';
-import { Store } from '@ngrx/store';
 import { MatDialog } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -32,8 +31,7 @@ import {
   ViolationType,
   VIOLATION_MESSAGES,
 } from '../exam/candidate-exam.models';
-import { CandidateSessionService } from '../../auth/candidate-session.service';
-import { CandidateAuthActions } from '../../auth/store/auth.actions';
+import { SelectedExamService } from '../exam/selected-exam.service';
 import { ConfirmService } from '../../../shared/components/confirm-dialog/confirm.service';
 import {
   ProctoringWarningData,
@@ -64,8 +62,7 @@ const INPUT_SAVE_DELAY_MS = 800;
 export class ExamTakeComponent implements OnInit {
   private readonly api = inject(CandidateExamService);
   protected readonly proctoring = inject(ProctoringService);
-  private readonly sessions = inject(CandidateSessionService);
-  private readonly store = inject(Store);
+  private readonly selectedExam = inject(SelectedExamService);
   private readonly router = inject(Router);
   private readonly dialog = inject(MatDialog);
   private readonly confirm = inject(ConfirmService);
@@ -146,7 +143,10 @@ export class ExamTakeComponent implements OnInit {
 
   async ngOnInit(): Promise<void> {
     try {
-      const result = await this.api.start();
+      const examId = this.selectedExam.exam()?.id;
+      if (!examId) return void this.router.navigateByUrl('/exam/home');
+
+      const result = await this.api.start(examId);
       switch (result.status) {
         case 'ok':
           break;
@@ -154,10 +154,11 @@ export class ExamTakeComponent implements OnInit {
           return void this.finish('time_up');
         case 'already_attempted':
           return void this.finish('submitted');
-        default:
-          this.sessions.forget();
-          this.store.dispatch(CandidateAuthActions.examFinished());
+        case 'expired':
           return void this.router.navigateByUrl('/exam/login');
+        default:
+          // Not assigned, not open, or another exam is still in progress.
+          return void this.router.navigateByUrl('/exam/home');
       }
 
       const { attempt, settings, questions } = result as Required<typeof result>;
@@ -334,8 +335,8 @@ export class ExamTakeComponent implements OnInit {
     this.proctoring.stop();
     if (this.document.fullscreenElement)
       await this.document.exitFullscreen().catch(() => undefined);
-    this.sessions.forget();
-    this.store.dispatch(CandidateAuthActions.examFinished());
+    // The session stays open so the candidate can go back to "My exams".
+    this.selectedExam.clear();
     await this.router.navigateByUrl(`/exam/done?reason=${reason}`);
   }
 

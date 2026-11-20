@@ -112,36 +112,43 @@ const adminExamsReducer = createReducer(
   on(A.loadCandidates, (state) => ({ ...state, candidates: fetching(state.candidates) })),
   on(
     A.createCandidates,
-    A.deleteCandidate,
+    A.assignCandidates,
+    A.unassignCandidates,
+    A.deleteCandidates,
     A.resetCandidateAttempt,
-    A.resetCandidatePasscode,
-    (state) => ({
-      ...state,
-      candidates: saving(state.candidates),
-    }),
+    A.resetCandidatePasscodes,
+    (state) => ({ ...state, candidates: saving(state.candidates) }),
   ),
   on(A.loadCandidatesSuccess, (state, { candidates }) => ({
     ...state,
     candidates: candidatesAdapter.setAll(candidates, done(state.candidates)),
   })),
-  on(A.createCandidatesSuccess, (state, { candidates }) => ({
-    ...state,
-    candidates: candidatesAdapter.addMany(candidates, done(state.candidates)),
-  })),
-  on(A.resetCandidateAttemptSuccess, A.resetCandidatePasscodeSuccess, (state, { candidate }) => ({
+  on(
+    A.createCandidatesSuccess,
+    A.assignCandidatesSuccess,
+    A.unassignCandidatesSuccess,
+    A.resetCandidatePasscodesSuccess,
+    (state, { candidates }) => ({
+      ...state,
+      candidates: candidatesAdapter.upsertMany(candidates, done(state.candidates)),
+    }),
+  ),
+  on(A.resetCandidateAttemptSuccess, (state, { candidate }) => ({
     ...state,
     candidates: candidatesAdapter.upsertOne(candidate, done(state.candidates)),
   })),
-  on(A.deleteCandidateSuccess, (state, { id }) => ({
+  on(A.deleteCandidatesSuccess, (state, { ids }) => ({
     ...state,
-    candidates: candidatesAdapter.removeOne(id, done(state.candidates)),
+    candidates: candidatesAdapter.removeMany(ids, done(state.candidates)),
   })),
   on(
     A.loadCandidatesFailure,
     A.createCandidatesFailure,
-    A.deleteCandidateFailure,
+    A.assignCandidatesFailure,
+    A.unassignCandidatesFailure,
+    A.deleteCandidatesFailure,
     A.resetCandidateAttemptFailure,
-    A.resetCandidatePasscodeFailure,
+    A.resetCandidatePasscodesFailure,
     (state, { error }) => ({ ...state, candidates: failed(state.candidates, error) }),
   ),
 

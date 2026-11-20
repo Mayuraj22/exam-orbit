@@ -22,7 +22,14 @@ export interface ExamProctoringSettings {
   snapshot_interval_seconds: number;
 }
 
-export type StartExamStatus = 'ok' | 'expired' | 'not_published' | 'already_attempted' | 'time_up';
+export type StartExamStatus =
+  | 'ok'
+  | 'expired'
+  | 'not_assigned'
+  | 'not_published'
+  | 'already_attempted'
+  | 'time_up'
+  | 'other_in_progress';
 
 export interface StartExamResult {
   status: StartExamStatus;

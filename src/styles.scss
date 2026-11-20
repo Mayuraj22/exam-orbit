@@ -1,30 +1,79 @@
 @use '@angular/material' as mat;
 
-/* ---------- Angular Material theme (Material 3) ---------- */
+/* =============================================================================
+   ExamOrbit theme: "Clean indigo"
+   Cool grey-blue page, navy sidebar, indigo actions. Light by default,
+   with a matching dark version (theme button in the toolbar).
+   Every colour is light-dark(<light>, <dark>), picked by `color-scheme`.
+   ============================================================================= */
 html {
-  color-scheme: light dark; // follows the OS setting; light-dark() below picks the matching value
+  color-scheme: light dark;
   @include mat.theme(
     (
       color: (
-        primary: mat.$azure-palette,
+        primary: mat.$violet-palette,
         tertiary: mat.$blue-palette,
       ),
-      typography: Roboto,
+      typography: (
+        plain-family: 'Inter, Roboto, system-ui, sans-serif',
+        brand-family: 'Inter, Roboto, system-ui, sans-serif',
+      ),
       density: 0,
+    )
+  );
+
+  // Pin Material's key colours to the indigo palette.
+  @include mat.theme-overrides(
+    (
+      primary: light-dark(#4f46e5, #a5b4fc),
+      on-primary: light-dark(#ffffff, #1e1b4b),
+      primary-container: light-dark(#e0e7ff, #312e81),
+      on-primary-container: light-dark(#312e81, #e0e7ff),
+      secondary-container: light-dark(#eef2ff, #272a4d),
+      on-secondary-container: light-dark(#3730a3, #c7d2fe),
+      // Page and surfaces
+      surface: light-dark(#ffffff, #111827),
+      on-surface: light-dark(#1e1b4b, #e5e7eb),
+      on-surface-variant: light-dark(#5b6280, #9ca3c4),
+      surface-container-lowest: light-dark(#ffffff, #0b1020),
+      surface-container-low: light-dark(#f4f6fb, #0b1020),
+      surface-container: light-dark(#eef1f8, #161d2f),
+      surface-container-high: light-dark(#e8ecf6, #1c2438),
+      surface-container-highest: light-dark(#e2e7f3, #232c42),
+      outline: light-dark(#a5acc8, #4b5577),
+      outline-variant: light-dark(#e0e7ff, #273047),
+      error: light-dark(#dc2626, #f87171),
+      on-error: light-dark(#ffffff, #450a0a),
+      error-container: light-dark(#fee2e2, #4c1414),
+      on-error-container: light-dark(#991b1b, #fecaca),
     )
   );
 }
 
-/* ---------- App tokens (built on Material's system variables) ---------- */
+/* ---------- App tokens ---------- */
 :root {
-  --app-success-bg: light-dark(#d4edda, #1e4620);
-  --app-success-fg: light-dark(#155724, #b7e4c0);
-  --app-warning-bg: light-dark(#fff3cd, #4d3d00);
-  --app-warning-fg: light-dark(#856404, #ffe08a);
-  --app-mcq-bg: light-dark(#e3f2fd, #0d2f4f);
-  --app-mcq-fg: light-dark(#0d47a1, #9fd0ff);
-  --app-input-bg: light-dark(#f3e5f5, #3d1f45);
-  --app-input-fg: light-dark(#4a148c, #e8b6f5);
+  // Status colours (same meaning everywhere)
+  --app-success-bg: light-dark(#dcfce7, #14532d);
+  --app-success-fg: light-dark(#166534, #bbf7d0);
+  --app-warning-bg: light-dark(#fef3c7, #422006);
+  --app-warning-fg: light-dark(#92400e, #fde68a);
+  --app-neutral-bg: light-dark(#f1f5f9, #273047);
+  --app-neutral-fg: light-dark(#475569, #cbd5e1);
+  --app-mcq-bg: light-dark(#e0e7ff, #312e81);
+  --app-mcq-fg: light-dark(#3730a3, #c7d2fe);
+  --app-input-bg: light-dark(#fae8ff, #4a1d55);
+  --app-input-fg: light-dark(#86198f, #f5d0fe);
+
+  // Navy sidebar (same in light and dark)
+  --app-nav-bg: #1e1b4b;
+  --app-nav-fg: #c7d2fe;
+  --app-nav-muted: #818cf8;
+  --app-nav-active-bg: #4338ca;
+  --app-nav-hover-bg: rgb(255 255 255 / 8%);
+
+  // Gentle elevation for cards and tiles
+  --app-card-shadow: light-dark(0 1px 2px rgb(30 27 75 / 6%), none);
+  --app-radius: 14px;
 }
 
 /* ---------- Base ---------- */
@@ -41,7 +90,8 @@ body {
 
 body {
   margin: 0;
-  font-family: var(--mat-sys-body-large-font, Roboto, sans-serif);
+  font-family: Inter, Roboto, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
   background: var(--mat-sys-surface-container-low);
   color: var(--mat-sys-on-surface);
 }
@@ -67,7 +117,11 @@ body {
 
   h1 {
     margin: 0;
-    font: var(--mat-sys-headline-medium);
+    font:
+      700 28px / 1.2 Inter,
+      Roboto,
+      sans-serif;
+    letter-spacing: -0.02em;
   }
 
   p {
@@ -163,6 +217,10 @@ body {
     background: var(--app-warning-bg);
     color: var(--app-warning-fg);
   }
+  &.neutral {
+    background: var(--app-neutral-bg);
+    color: var(--app-neutral-fg);
+  }
   &.mcq {
     background: var(--app-mcq-bg);
     color: var(--app-mcq-fg);
@@ -246,5 +304,72 @@ body {
       max-height: none;
       flex: 1;
     }
+  }
+}
+
+/* ---------- Surfaces: cards and tables ---------- */
+.mat-mdc-card-outlined {
+  --mat-card-outlined-container-shape: var(--app-radius);
+  box-shadow: var(--app-card-shadow);
+}
+
+.mat-mdc-table {
+  --mat-table-header-headline-color: var(--mat-sys-on-surface-variant);
+  --mat-table-row-item-outline-color: var(--mat-sys-outline-variant);
+  background: var(--mat-sys-surface);
+
+  .mat-mdc-header-cell {
+    font: var(--mat-sys-label-large);
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    font-size: 12px;
+    background: var(--mat-sys-surface-container-low);
+  }
+
+  .mat-mdc-row:hover {
+    background: var(--mat-sys-surface-container-low);
+  }
+}
+
+/* Buttons: a little rounder and bolder */
+.mdc-button {
+  --mat-button-filled-container-shape: 10px;
+  --mat-button-outlined-container-shape: 10px;
+  --mat-button-text-container-shape: 10px;
+  --mat-button-protected-container-shape: 10px;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+/* ---------- Result badge (one per submission: Passed, Failed, To grade…) ---------- */
+.badge {
+  padding: 2px 8px;
+  border-radius: 999px;
+  font:
+    600 11px / 1.4 Inter,
+    Roboto,
+    sans-serif;
+  white-space: nowrap;
+  background: var(--app-neutral-bg);
+  color: var(--app-neutral-fg);
+
+  &[data-badge='pass'],
+  &[data-badge='graded'] {
+    background: var(--app-success-bg);
+    color: var(--app-success-fg);
+  }
+  &[data-badge='needs-grading'] {
+    background: var(--app-warning-bg);
+    color: var(--app-warning-fg);
+  }
+  &[data-badge='fail'],
+  &[data-badge='disqualified'] {
+    background: var(--mat-sys-error-container);
+    color: var(--mat-sys-on-error-container);
+  }
+
+  &.lg {
+    padding: 4px 12px;
+    font-size: 12px;
   }
 }

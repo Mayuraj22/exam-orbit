@@ -77,10 +77,10 @@ describe('adminExams reducer', () => {
   it('adds many candidates at once (CSV import)', () => {
     const candidates: Candidate[] = ['Bea', 'Al'].map((name, i) => ({
       id: `c${i}`,
-      exam_id: 'e1',
       name,
       username: name.toLowerCase(),
-      has_attempted: false,
+      email: null,
+      assignments: [{ exam_id: 'e1', has_attempted: false, assigned_at: '2026-01-01' }],
     }));
     const state = reducer(initialAdminExamsState, A.createCandidatesSuccess({ candidates }));
     // Sorted by name.

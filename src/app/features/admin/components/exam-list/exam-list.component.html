@@ -16,22 +16,16 @@
 
   <!-- Toolbar: search, status filter, sort -->
   <div class="filters">
-    <mat-form-field class="search-field" subscriptSizing="dynamic" appearance="outline">
-      <mat-icon matPrefix>search</mat-icon>
-      <mat-label>Search exams</mat-label>
-      <input matInput [value]="search()" (input)="setQueryParam('q', $any($event.target).value)" />
-      @if (search()) {
-        <button
-          matSuffix
-          mat-icon-button
-          type="button"
-          aria-label="Clear search"
-          (click)="setQueryParam('q', null)"
-        >
-          <mat-icon>close</mat-icon>
-        </button>
-      }
-    </mat-form-field>
+    <label class="search">
+      <mat-icon aria-hidden="true">search</mat-icon>
+      <input
+        type="search"
+        placeholder="Search exams"
+        aria-label="Search exams"
+        [value]="search()"
+        (input)="setQueryParam('q', $any($event.target).value)"
+      />
+    </label>
 
     <mat-button-toggle-group
       [value]="statusFilter()"
@@ -66,8 +60,8 @@
   @if (loading() && exams().length === 0) {
     <div class="exams-container" aria-busy="true" aria-label="Loading exams">
       @for (s of skeletons; track s) {
-        <mat-card appearance="outlined" class="exam-card">
-          <mat-card-content>
+        <div class="exam-card">
+          <div>
             <div class="skeleton sk-title"></div>
             <div class="skeleton sk-line"></div>
             <div class="skeleton sk-line short"></div>
@@ -75,8 +69,8 @@
               <div class="skeleton sk-btn"></div>
               <div class="skeleton sk-btn"></div>
             </div>
-          </mat-card-content>
-        </mat-card>
+          </div>
+        </div>
       }
     </div>
   } @else {
@@ -89,60 +83,50 @@
 
     <div class="exams-container">
       @for (exam of visibleExams(); track exam.id) {
-        <mat-card
-          appearance="outlined"
+        <article
           class="exam-card"
+          [attr.data-tone]="$index % 4"
           [class.expanded]="selectedExamId() === exam.id"
         >
-          <mat-card-content>
-            <div class="exam-header">
-              <h2 class="exam-title">
-                <a [routerLink]="['/admin/exams', exam.id]">{{ exam.title }}</a>
-              </h2>
-              <span
-                class="status-chip"
-                [class.published]="exam.is_published"
-                [class.draft]="!exam.is_published"
-              >
-                {{ exam.is_published ? 'Published' : 'Draft' }}
-              </span>
-              <button
-                mat-icon-button
-                type="button"
-                [matMenuTriggerFor]="examMenu"
-                [matMenuTriggerData]="{ exam }"
-                [attr.aria-label]="'More actions for ' + exam.title"
-              >
-                <mat-icon>more_vert</mat-icon>
-              </button>
-            </div>
-
-            @if (exam.description) {
-              <p class="description">{{ exam.description }}</p>
-            }
-
-            <div class="meta">
-              <span><mat-icon inline>schedule</mat-icon> {{ exam.duration_minutes }} min</span>
-              <span
-                ><mat-icon inline>event</mat-icon> {{ exam.created_at | date: 'mediumDate' }}</span
-              >
-            </div>
-          </mat-card-content>
-
-          <mat-card-actions class="exam-actions">
+          <div class="card-top">
+            <span class="badge-icon" aria-hidden="true">{{
+              exam.title.charAt(0).toUpperCase()
+            }}</span>
+            <span class="state" [class.live]="exam.is_published">
+              <span class="pulse"></span>{{ exam.is_published ? 'Live' : 'Draft' }}
+            </span>
             <button
-              mat-stroked-button
+              mat-icon-button
+              type="button"
+              class="more"
+              [matMenuTriggerFor]="examMenu"
+              [matMenuTriggerData]="{ exam }"
+              [attr.aria-label]="'More actions for ' + exam.title"
+            >
+              <mat-icon>more_horiz</mat-icon>
+            </button>
+          </div>
+
+          <h2 class="exam-title">
+            <a [routerLink]="['/admin/exams', exam.id]">{{ exam.title }}</a>
+          </h2>
+          <p class="description">{{ exam.description || 'No description' }}</p>
+
+          <div class="meta">
+            <span><mat-icon inline>schedule</mat-icon>{{ exam.duration_minutes }} min</span>
+            <span><mat-icon inline>event</mat-icon>{{ exam.created_at | date: 'MMM d, y' }}</span>
+          </div>
+
+          <div class="exam-actions">
+            <button
+              mat-button
               type="button"
               (click)="toggleQuestions(exam.id)"
               [attr.aria-expanded]="selectedExamId() === exam.id"
             >
               <mat-icon>{{ selectedExamId() === exam.id ? 'expand_less' : 'quiz' }}</mat-icon>
-              {{ selectedExamId() === exam.id ? 'Close Questions' : 'Manage Questions' }}
+              {{ selectedExamId() === exam.id ? 'Close' : 'Questions' }}
             </button>
-            <a mat-button [routerLink]="['/admin/exams', exam.id]">
-              <mat-icon>open_in_new</mat-icon>
-              Open
-            </a>
             @if (!exam.is_published) {
               <button
                 mat-button
@@ -154,12 +138,15 @@
                 Publish
               </button>
             }
-          </mat-card-actions>
+            <a mat-flat-button class="open" [routerLink]="['/admin/exams', exam.id]">
+              Open <mat-icon iconPositionEnd>arrow_forward</mat-icon>
+            </a>
+          </div>
 
           @if (selectedExamId() === exam.id) {
-            <app-question-form [examId]="exam.id" />
+            <div class="questions"><app-question-form [examId]="exam.id" /></div>
           }
-        </mat-card>
+        </article>
       } @empty {
         @if (hasFilters()) {
           <div class="empty-state">

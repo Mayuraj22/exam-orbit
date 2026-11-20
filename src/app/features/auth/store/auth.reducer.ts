@@ -9,8 +9,7 @@ const applyResult = (
 ): CandidateAuthState => ({
   ...state,
   status: result.status,
-  session:
-    result.candidate && result.exam ? { candidate: result.candidate, exam: result.exam } : null,
+  session: result.candidate ? { candidate: result.candidate } : null,
   isAuthenticated: result.status === 'ok',
   loading: false,
   error: null,
